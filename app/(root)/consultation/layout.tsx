@@ -6,7 +6,6 @@ export default async function Layout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <main className="bg-[#111827] font-montserrat">
-      ``
       <Navbar />
       {children}
       <Footer />

@@ -11,13 +11,13 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="flex-grow">
         {/* Hero Section */}
-        <div className=" py-24">
+        <div className="py-24">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl font-extrabold text-white sm:text-5xl md:text-6xl">
-              <span className="block text-purple-300 font-montserrat font-medium">
+              <span className="block text-purple-300 font-montserrat font-medium text-4xl sm:text-5xl md:text-6xl">
                 The World First
               </span>
-              <span className="block text-white font-montserrat font-semibold text-5xl">
+              <span className="block text-white font-montserrat font-semibold text-3xl sm:text-4xl md:text-5xl">
                 Scope 3 Agentic Carbon
               </span>
             </h1>
@@ -26,8 +26,8 @@ export default function Dashboard() {
               from company operational activity, automatically analyze, report,
               and store it on blockchain
             </p>
-            <div className="mt-10 flex justify-center gap-4">
-              <button className="btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md">
+            <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+              <button className="w-full sm:w-auto btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md hover:bg-white/10 transition-colors">
                 <Link href="/carbontracking">
                   <span className="sm:hidden">
                     Start Carbon
@@ -39,7 +39,7 @@ export default function Dashboard() {
                   </span>
                 </Link>
               </button>
-              <button className="btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md">
+              <button className="w-full sm:w-auto btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md hover:bg-white/10 transition-colors">
                 <Link href="/ecosystem">Ecosystem</Link>
               </button>
             </div>
@@ -48,22 +48,24 @@ export default function Dashboard() {
       </main>
 
       <section className="py-16 pt-24 pb-60" id="ecosystem">
-        <div className="max-w-7xl flex justify-center flex-col items-center mx-10  px-4 sm:px-15 lg:px-8 text-center">
-          <Image
-            src="/ecosystem-vertical.png"
-            alt="Ecosystem Vertical"
-            width={400}
-            height={600}
-            className="mx-10 mb-10 block sm:hidden"
-          />
-          <Image
-            src="/ecosystem.png"
-            alt="Ecosystem"
-            width={600}
-            height={400}
-            className="mx-10 mb-10 hidden sm:block"
-          />
-          <p className="text-base sm:text-sm xs:text-xs text-white font-montserrat font-thin w-[80%] ">
+        <div className="max-w-7xl flex justify-center flex-col items-center mx-10 px-4 sm:px-15 lg:px-8 text-center">
+          <div className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[60%]">
+            <Image
+              src="/ecosystem-vertical.png"
+              alt="Ecosystem Vertical"
+              width={400}
+              height={600}
+              className="w-full h-auto mb-10 block sm:hidden"
+            />
+            <Image
+              src="/ecosystem.png"
+              alt="Ecosystem"
+              width={600}
+              height={400}
+              className="w-full h-auto mb-10 hidden sm:block"
+            />
+          </div>
+          <p className="text-base sm:text-sm xs:text-xs text-white font-montserrat font-thin w-[80%]">
             Our system combines multiple approaches to collaborate across
             multiple computers within the company, automatically analyze &
             report related information, creating an automatic carbon pipeline
