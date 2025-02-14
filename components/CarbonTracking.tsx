@@ -1,29 +1,43 @@
 "use client";
 import React from "react";
 import { useState } from "react";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import Image from "next/image";
 
 const CarbonTracking = () => {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [analyzedFiles, setAnalyzedFiles] = useState(0);
+
   const handleUpload = async () => {
-    if (!file) return alert("Pilih file ZIP terlebih dahulu!");
+    if (!file) return alert("Please select a ZIP file first!");
+    if (!file.name.endsWith(".zip")) return alert("Please select a ZIP file!");
 
-    const formData = new FormData();
-    formData.append("file", file);
+    setIsLoading(true);
+    setError(null);
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const data = await res.json();
-    setResult(data.totalCarbonFootprint);
+      const res = await fetch("/api/upload/", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      setResult(data.totalCarbonFootprint);
+      setAnalyzedFiles(data.analyzedFiles);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+      setResult(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -84,58 +98,51 @@ const CarbonTracking = () => {
             <p>- Trees as equal</p>
           </div>
         </div>
-        {/* Documents Table */}
-        <div className="relative">
-          <ResizablePanelGroup
-            direction="horizontal"
-            className="min-h-[200px] w-full rounded-lg md:min-w-[450px]"
-          >
-            <ResizablePanel defaultSize={65}>
-              <div className="flex h-full items-center justify-center p-6">
-                <div className="w-full max-w-4xl mt-10">
-                  <div className="overflow-hidden border border-gray-700 rounded-lg mt-4">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-700 text-gray-300 uppercase">
-                        <tr>
-                          <th className="py-3 px-4">Current Documents</th>
-                          <th className="py-3 px-4">Carbon (kg)</th>
-                          <th className="py-3 px-4">Category</th>
-                          <th className="py-3 px-4">Deposit (kg)</th>
-                          <th className="py-3 px-4">Address</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-t border-gray-700">
-                          <td className="py-3 px-4">empty</td>
-                          <td className="py-3 px-4">-</td>
-                          <td className="py-3 px-4">empty</td>
-                          <td className="py-3 px-4">-</td>
-                          <td className="py-3 px-4">----</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={35}>
-              <div className="flex h-full items-center justify-center p-6">
-                <div className="flex flex-col items-center justify-center w-full max-w-4xl mt-10">
-                  <span className="text-3xl text-center font-montserrat font-bold mb-4">
-                    {" "}
-                    {`---`}
-                  </span>
 
-                  <span className="text-3xl text-center font-montserrat font-semibold">
-                    {" "}
-                    Analyzed
-                    <br /> Documents
-                  </span>
-                </div>
+        {/* Content Section */}
+        <div className="flex gap-4 px-6">
+          {/* Left Panel */}
+          <div className="flex-grow">
+            <div className="w-full max-w-4xl mt-10">
+              <div className="overflow-hidden border border-gray-700 rounded-lg mt-4">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-700 text-gray-300 uppercase">
+                    <tr>
+                      <th className="py-3 px-4">Current Documents</th>
+                      <th className="py-3 px-4">Carbon (kg)</th>
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">Deposit (kg)</th>
+                      <th className="py-3 px-4">Address</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-gray-700">
+                      <td className="py-3 px-4">empty</td>
+                      <td className="py-3 px-4">-</td>
+                      <td className="py-3 px-4">empty</td>
+                      <td className="py-3 px-4">-</td>
+                      <td className="py-3 px-4">----</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            </div>
+          </div>
+
+          {/* Right Panel */}
+          <div className="w-1/3">
+            <div className="flex flex-col items-center justify-center w-full mt-10">
+              <span className="text-3xl text-center font-montserrat font-bold mb-4">
+                {" "}
+                {`---`}
+              </span>
+              <span className="text-3xl text-center font-montserrat font-semibold">
+                {" "}
+                Analyzed
+                <br /> Documents
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* File Upload & Processing Section */}
@@ -148,21 +155,60 @@ const CarbonTracking = () => {
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="border border-gray-600 p-2 rounded"
               />
-              <div className="flex items-center justify-center w-full text-center h-20 border-2 border-white">
+              <div className="flex flex-col items-center justify-center w-full text-center min-h-20 border-2 border-white p-4">
                 <span className="text-white">
-                  hi
-                  {result !== null && (
-                    <div className="mt-6 text-lg">
-                      Jejak Karbon: {result.toFixed(2)} kg CO₂
+                  {isLoading ? (
+                    <div>
+                      <div>Processing files... Please wait.</div>
+                      <div className="text-sm mt-2 text-gray-400">
+                        This may take a few moments depending on the file size.
+                      </div>
+                    </div>
+                  ) : error ? (
+                    <div className="text-red-500">
+                      <div>Error: {error}</div>
+                      <div className="text-sm mt-2">
+                        Please ensure:
+                        <ul className="list-disc list-inside mt-1">
+                          <li>Your ZIP file contains PDF or text files</li>
+                          <li>Files are not corrupted</li>
+                          <li>Files are properly formatted</li>
+                        </ul>
+                      </div>
+                    </div>
+                  ) : result !== null ? (
+                    <div className="space-y-2">
+                      <div className="text-lg">
+                        Total Carbon Footprint: {result.toFixed(2)} kg CO₂
+                      </div>
+                      <div className="text-sm">
+                        Successfully analyzed {analyzedFiles}{" "}
+                        {analyzedFiles === 1 ? "file" : "files"}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div>
+                        Upload a ZIP file containing PDF or text files to
+                        analyze carbon footprint
+                      </div>
+                      <div className="text-sm mt-2 text-gray-400">
+                        Files will be processed and analyzed using AI
+                      </div>
                     </div>
                   )}
                 </span>
               </div>
               <button
                 onClick={handleUpload}
-                className="w-full border-2 border-white bg-transparent hover:bg-blue-700 transition text-white py-2 px-6 rounded"
+                disabled={isLoading || !file}
+                className={`w-full border-2 border-white transition text-white py-2 px-6 rounded ${
+                  isLoading || !file
+                    ? "opacity-50 cursor-not-allowed"
+                    : "bg-transparent hover:bg-blue-700"
+                }`}
               >
-                Process
+                {isLoading ? "Processing..." : "Process"}
               </button>
             </div>
             <div className="flex items-center justify-center w-96 h-12 border-2 border-white rounded-lg">
