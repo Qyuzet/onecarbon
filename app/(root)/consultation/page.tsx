@@ -1,4 +1,3 @@
-// app/components/ContactForm.tsx
 import { Mail, MapPin, MessageSquare, PhoneIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ContactForm from "@/components/ContactForm";
@@ -84,10 +83,14 @@ export default function page() {
       {/* Map Section */}
       <div className="mb-0 mt-12 h-[400px] w-full rounded-lg overflow-hidden">
         <iframe
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.358870133138!2d106.81297867461336!3d-6.216314993771629!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f6aae916029f%3A0x9b2b9acc262ce5ba!2sJAKARTA%20MORI%20TOWER!5e0!3m2!1sid!2sid!4v1739530620258!5m2!1sid!2sid"
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.358870133138!2d106.81297867461336!3d-6.216314993771629!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f6aae916029f%3A0x9b2b9acc262ce5ba!2sJAKARTA%20MORI%20TOWER!5e0!3m2!1sid!2sid!4v1739530620258!5m2!1sid!2sid&mode=dark"
           width="100%"
           height="40%"
-          style={{ border: 0 }}
+          style={{
+            border: 0,
+            filter:
+              "invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%)",
+          }}
           allowFullScreen={true}
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
