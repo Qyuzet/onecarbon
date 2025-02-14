@@ -9,7 +9,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
 
   - Automated processing of operational documents
   - Support for PDF and text file formats
-  - Intelligent carbon footprint extraction using GPT-3.5
+  - Intelligent carbon footprint extraction using Agentic AI
   - Bulk processing through ZIP file uploads
 
 - **Blockchain Integration**
