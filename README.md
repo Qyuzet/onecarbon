@@ -1,36 +1,156 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OneCarbon - Scope 3 Agentic Carbon Platform
 
-## Getting Started
+OneCarbon is the world's first automated Scope 3 carbon reporting platform that leverages AI for document analysis and blockchain technology for secure, privacy-preserving data storage.
 
-First, run the development server:
+## 🌟 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **AI-Powered Document Analysis**
+
+  - Automated processing of operational documents
+  - Support for PDF and text file formats
+  - Intelligent carbon footprint extraction using GPT-3.5
+  - Bulk processing through ZIP file uploads
+
+- **Blockchain Integration**
+
+  - Smart contract-based data storage
+  - Privacy-preserving transactions via Manta Network
+  - Transparent and verifiable carbon tracking
+  - Web3 wallet connectivity
+
+- **Modern Web Interface**
+  - Real-time carbon metrics dashboard
+  - Interactive document upload system
+  - Progress tracking and analytics
+  - Responsive design for all devices
+
+## 🛠️ Tech Stack
+
+- **Frontend**
+
+  - Next.js 13+ with App Router
+  - TypeScript
+  - Tailwind CSS
+  - React Components
+
+- **Backend**
+
+  - Next.js API Routes
+  - OpenAI GPT-3.5 Integration
+  - PDF Parser
+  - File System Management
+
+- **Blockchain**
+  - Ethereum Smart Contracts (Solidity)
+  - Manta Network Integration
+  - Web3 Integration
+
+## 📋 Prerequisites
+
+- Node.js 16.x or later
+- npm or yarn
+- OpenAI API key
+- Web3 wallet (MetaMask recommended)
+- Manta Network account
+
+## 🚀 Getting Started
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/Qyuzet/onecarbon.git
+   cd onecarbon
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Set up environment variables:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Fill in your:
+
+   - OpenAI API key
+   - Manta Network credentials
+   - Other required environment variables
+
+4. Run the development server:
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## 📁 Project Structure
+
+```
+onecarbon/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   ├── (root)/            # Main pages
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+├── contracts/            # Smart contracts
+├── public/               # Static assets
+├── utils/                # Utility functions
+└── lib/                  # Shared libraries
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔒 Smart Contract
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The CarbonTracking smart contract provides:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Carbon footprint data storage
+- User-specific tracking
+- Historical data access
+- Event emission for tracking
 
-## Learn More
+## 📤 File Upload System
 
-To learn more about Next.js, take a look at the following resources:
+Supports:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- ZIP file uploads
+- PDF document processing
+- Text file analysis
+- Bulk document handling
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛡️ Privacy Features
 
-## Deploy on Vercel
+- Manta Network integration for private transactions
+- Secure document processing
+- Protected business data
+- Verifiable calculations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🤝 Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- OpenAI for GPT-3.5 API
+- Manta Network for privacy features
+- Next.js team for the amazing framework
+- All contributors and supporters
+
+---
+
+Built with 💚 for a sustainable future | OneCarbon Team

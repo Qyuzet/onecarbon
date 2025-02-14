@@ -5,10 +5,6 @@ import OpenAI from "openai";
 import { writeFile } from "fs/promises";
 import { join } from "path";
 
-interface ProcessError extends Error {
-  message: string;
-}
-
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -16,34 +12,19 @@ const openai = new OpenAI({
 
 // Function to recursively get all files
 function getAllFiles(dir: string): string[] {
-  try {
-    const files: string[] = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-    console.log(`Scanning directory: ${dir}`);
-    console.log(
-      `Found entries:`,
-      entries.map((e) => ({ name: e.name, isDirectory: e.isDirectory() }))
-    );
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name).replace(/\\/g, "/");
-      if (entry.isDirectory()) {
-        console.log(`Processing directory: ${fullPath}`);
-        const subDirFiles = getAllFiles(fullPath);
-        console.log(`Files found in directory ${entry.name}:`, subDirFiles);
-        files.push(...subDirFiles);
-      } else {
-        console.log(`Processing file: ${fullPath}`);
-        files.push(fullPath);
-      }
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...getAllFiles(fullPath));
+    } else {
+      files.push(fullPath);
     }
-
-    return files;
-  } catch (error) {
-    console.error(`Error scanning directory ${dir}:`, error);
-    return [];
   }
+
+  return files;
 }
 
 async function analyzePDFWithGPT(text: string): Promise<number> {
@@ -71,22 +52,32 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
     // Extract numeric value from the response
     const match = result.match(/\d+(\.\d+)?/);
     return match ? parseFloat(match[0]) : 0;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error analyzing with GPT:", error);
     return 0;
   }
 }
 
-async function readFileContent(filePath: string): Promise<string> {
+async function readPDFContent(filePath: string): Promise<string> {
   try {
-    // For now, read all files as text to test the functionality
-    const content = await fs.promises.readFile(filePath, "utf-8");
-    console.log(
-      `Successfully read file ${filePath}, content length: ${content.length}`
-    );
-    return content;
-  } catch (error) {
-    console.error(`Error reading file ${filePath}:`, error);
+    // Verify file exists before attempting to read
+    if (!fs.existsSync(filePath)) {
+      console.error(`File not found: ${filePath}`);
+      return "";
+    }
+
+    const pdfParse = (await import("pdf-parse")).default;
+    const buffer = await fs.promises.readFile(filePath);
+
+    try {
+      const pdfData = await pdfParse(buffer);
+      return pdfData.text;
+    } catch (pdfError: unknown) {
+      console.error(`Error parsing PDF ${filePath}:`, pdfError);
+      return "";
+    }
+  } catch (error: unknown) {
+    console.error(`Error reading PDF file ${filePath}:`, error);
     return "";
   }
 }
@@ -136,106 +127,68 @@ export async function POST(req: NextRequest) {
     const zipPath = join(uploadDir, "upload.zip");
 
     await writeFile(zipPath, buffer);
-    console.log("ZIP file saved to:", zipPath);
 
     try {
       // Extract the ZIP file
       await extract(zipPath, { dir: extractDir });
-      console.log("ZIP file extracted to:", extractDir);
-
-      // List directory contents after extraction
-      const dirContents = fs.readdirSync(extractDir);
-      console.log("Extracted directory contents:", dirContents);
 
       // Process files recursively
       const allFiles = getAllFiles(extractDir);
-      console.log("All files found:", allFiles);
+      console.log("Found files:", allFiles); // Debug log
 
-      // Filter for PDF and text files
       const files = allFiles.filter((file) => {
         const lowerFile = file.toLowerCase();
-        const isPdfOrTxt =
-          lowerFile.endsWith(".pdf") || lowerFile.endsWith(".txt");
-        console.log(`File ${file}: isPdfOrTxt = ${isPdfOrTxt}`);
-        return isPdfOrTxt;
+        return lowerFile.endsWith(".pdf") || lowerFile.endsWith(".txt");
       });
-      console.log("Filtered PDF/TXT files:", files);
+
+      console.log("Filtered files to process:", files); // Debug log
 
       if (files.length === 0) {
         return NextResponse.json(
-          {
-            error: "No PDF or text files found in ZIP",
-            directoryContents: dirContents,
-            allFilesFound: allFiles,
-          },
+          { error: "No PDF or text files found in ZIP" },
           { status: 400 }
         );
       }
 
       let totalCarbonFootprint = 0;
-      let processedFiles = 0;
-      const processedResults = [];
-
       for (const filePath of files) {
-        try {
-          console.log(`Attempting to read file: ${filePath}`);
-          const fileContent = await readFileContent(filePath);
+        const isPDF = filePath.toLowerCase().endsWith(".pdf");
+        const fileContent = isPDF
+          ? await readPDFContent(filePath)
+          : await fs.promises.readFile(filePath, "utf-8");
 
-          if (fileContent && fileContent.length > 0) {
-            console.log(
-              `Successfully read file ${filePath}, content length: ${fileContent.length}`
-            );
-            const carbonData = await analyzePDFWithGPT(fileContent);
-            console.log(`Analyzed carbon data for ${filePath}: ${carbonData}`);
-            totalCarbonFootprint += carbonData;
-            processedFiles++;
-            processedResults.push({
-              file: filePath.split("/").pop() || filePath, // Just the filename
-              carbonFootprint: carbonData,
-            });
-          } else {
-            console.log(`Empty or invalid content for file: ${filePath}`);
-          }
-        } catch (error) {
-          const processError = error as ProcessError;
-          console.error(`Error processing file ${filePath}:`, processError);
+        if (fileContent) {
+          const carbonData = await analyzePDFWithGPT(fileContent);
+          totalCarbonFootprint += carbonData;
         }
-      }
-
-      // Cleanup
-      fs.rmSync(uploadDir, { recursive: true, force: true });
-      fs.rmSync(extractDir, { recursive: true, force: true });
-
-      if (processedFiles === 0) {
-        return NextResponse.json(
-          {
-            error: "Could not process any files in the ZIP",
-            details: "Files were found but could not be processed",
-            filesAttempted: files.map((f) => f.split("/").pop() || f),
-          },
-          { status: 400 }
-        );
       }
 
       return NextResponse.json({
         message: "Upload successful",
         totalCarbonFootprint,
-        analyzedFiles: processedFiles,
-        results: processedResults,
+        analyzedFiles: files.length,
       });
-    } catch (error) {
-      const processError = error as ProcessError;
-      console.error("Error processing ZIP:", processError);
+    } catch (error: unknown) {
+      console.error("Error processing ZIP:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       return NextResponse.json(
-        { error: "Failed to process ZIP file", details: processError.message },
+        {
+          error: "Failed to process ZIP file",
+          details: errorMessage,
+        },
         { status: 400 }
       );
     }
-  } catch (error) {
-    const processError = error as ProcessError;
-    console.error("Error processing files:", processError);
+  } catch (error: unknown) {
+    console.error("Error processing files:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "File processing failed", details: processError.message },
+      {
+        error: "File processing failed",
+        details: errorMessage,
+      },
       { status: 500 }
     );
   }
