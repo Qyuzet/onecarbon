@@ -1,4 +1,3 @@
-// components/Navbar.jsx
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import MobileMenuButton from "@/components/MobileMenuButton";
@@ -9,7 +8,7 @@ export default function Navbar() {
     <nav className="bg-[#111827] relative z-[999]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex  w-full justify-center items-center">
+          <div className="flex w-full justify-center items-center">
             <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4 text-white">
               <Button variant="ghost" asChild>
                 <Link href="/">Dashboard</Link>
@@ -31,12 +30,15 @@ export default function Navbar() {
             </div>
 
             <div className="flex-shrink-0 flex items-center pl-20">
-              <Image
-                src="/oneCarbon-logo.png"
-                alt="logo"
-                width={150}
-                height={500}
-              />
+              <Link href="/">
+                <Image
+                  src="/oneCarbon-logo.png"
+                  alt="logo"
+                  width={150}
+                  height={500}
+                  className="cursor-pointer"
+                />
+              </Link>
             </div>
           </div>
 

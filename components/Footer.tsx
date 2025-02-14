@@ -3,23 +3,23 @@ import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="relative py-6 px-10">
-      <div className="absolute inset-0 z-0">
+    <footer className="relative py-6 px-4 sm:px-6 lg:px-10 w-full">
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <Image
           src="/Looper-background.png"
           alt="Background"
           layout="fill"
           objectFit="cover"
           quality={100}
-          className="lg:object-[screen] md:object-[screen] sm:object-cover"
+          className="w-full h-full object-cover min-w-full min-h-full"
         />
       </div>
       <div className="relative z-10">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-1">
-              <Link href="/dashboard">
-                <span className="text-2xl font-bold text-white hover:text-gray-300">
+              <Link href="/">
+                <span className="text-2xl font-bold text-white hover:text-gray-300 cursor-pointer">
                   oneCarbon
                 </span>
               </Link>

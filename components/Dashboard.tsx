@@ -40,32 +40,34 @@ export default function Dashboard() {
                 </Link>
               </button>
               <button className="w-full sm:w-auto btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md hover:bg-white/10 transition-colors">
-                <Link href="/ecosystem">Ecosystem</Link>
+                <Link href="#ecosystem">Ecosystem</Link>
               </button>
             </div>
           </div>
         </div>
       </main>
 
-      <section className="py-16 pt-24 pb-60" id="ecosystem">
-        <div className="max-w-7xl flex justify-center flex-col items-center mx-10 px-4 sm:px-15 lg:px-8 text-center">
-          <div className="w-full max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[60%]">
+      <section className="w-full py-16 pt-24 pb-60" id="ecosystem">
+        <div className="w-full max-w-7xl mx-auto flex flex-col items-center px-4">
+          <div className="w-full sm:w-[600px] relative">
             <Image
               src="/ecosystem-vertical.png"
               alt="Ecosystem Vertical"
               width={400}
               height={600}
-              className="w-full h-auto mb-10 block sm:hidden"
+              className="w-full h-auto mb-10 block sm:hidden mx-auto"
+              priority
             />
             <Image
               src="/ecosystem.png"
               alt="Ecosystem"
               width={600}
               height={400}
-              className="w-full h-auto mb-10 hidden sm:block"
+              className="w-full h-auto mb-10 hidden sm:block mx-auto"
+              priority
             />
           </div>
-          <p className="text-base sm:text-sm xs:text-xs text-white font-montserrat font-thin w-[80%]">
+          <p className="text-base sm:text-sm text-white font-montserrat font-thin max-w-[600px] text-center">
             Our system combines multiple approaches to collaborate across
             multiple computers within the company, automatically analyze &
             report related information, creating an automatic carbon pipeline
