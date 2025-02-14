@@ -24,30 +24,22 @@ export default function MobileMenuButton() {
         <div className="absolute top-16 inset-x-0 z-[998] bg-white dark:bg-gray-800 sm:hidden">
           <div className="pt-2 pb-3 space-y-1 px-4">
             <Button variant="ghost" asChild className="w-full justify-start">
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/">Dashboard</Link>
             </Button>
             <Button variant="ghost" asChild className="w-full justify-start">
-              <Link href="/carbon-tracking">Carbon Tracking</Link>
+              <Link href="/carbontracking">Carbon Tracking</Link>
             </Button>
             <Button variant="ghost" asChild className="w-full justify-start">
-              <Link href="/ecosystem">Ecosystem</Link>
+              <Link href="/#ecosystem">Ecosystem</Link>
             </Button>
             <Button variant="ghost" asChild className="w-full justify-start">
-              <Link href="/network">Network</Link>
+              <Link href="https://manta.network/" target="_blank">
+                Network
+              </Link>
             </Button>
             <Button variant="ghost" asChild className="w-full justify-start">
               <Link href="/consultation">Consultation</Link>
             </Button>
-          </div>
-          <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center px-4">
-              <Button variant="outline" asChild className="w-full mr-2">
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button asChild className="w-full ml-2">
-                <Link href="/signup">Sign Up</Link>
-              </Button>
-            </div>
           </div>
         </div>
       )}

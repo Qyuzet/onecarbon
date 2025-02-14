@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -29,7 +28,16 @@ export default function Dashboard() {
             </p>
             <div className="mt-10 flex justify-center gap-4">
               <button className="btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md">
-                <Link href="/carbontracking">Start Carbon Tracking</Link>
+                <Link href="/carbontracking">
+                  <span className="sm:hidden">
+                    Start Carbon
+                    <br />
+                    Tracking
+                  </span>
+                  <span className="hidden sm:inline">
+                    Start Carbon Tracking
+                  </span>
+                </Link>
               </button>
               <button className="btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md">
                 <Link href="/ecosystem">Ecosystem</Link>

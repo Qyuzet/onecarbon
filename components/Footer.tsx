@@ -18,7 +18,11 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-1">
-              <span className="text-2xl font-bold text-white">oneCarbon</span>
+              <Link href="/dashboard">
+                <span className="text-2xl font-bold text-white hover:text-gray-300">
+                  oneCarbon
+                </span>
+              </Link>
               <p className="mt-2 text-sm text-white">
                 Revolutionizing carbon tracking and reporting with AI and
                 blockchain technology.
@@ -35,7 +39,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-4">
                 <li>
                   <Link
-                    href="/features"
+                    href="#"
                     className="text-base text-white hover:text-gray-300"
                   >
                     Features
@@ -43,7 +47,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link
-                    href="/pricing"
+                    href="#"
                     className="text-base text-white hover:text-gray-300"
                   >
                     Pricing
@@ -51,7 +55,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link
-                    href="/case-studies"
+                    href="#"
                     className="text-base text-white hover:text-gray-300"
                   >
                     Case Studies
@@ -59,7 +63,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link
-                    href="/docs"
+                    href="#"
                     className="text-base text-white hover:text-gray-300"
                   >
                     Documentation
@@ -75,7 +79,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-4">
                 <li>
                   <Link
-                    href="/about"
+                    href="#"
                     className="text-base text-white hover:text-gray-300"
                   >
                     About
@@ -83,13 +87,12 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link
-                    href="/blog"
+                    href="#"
                     className="text-base text-white hover:text-gray-300"
                   >
                     Blog
                   </Link>
                 </li>
-                {/* ... */}
               </ul>
             </div>
           </div>
