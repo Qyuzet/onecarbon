@@ -39,7 +39,7 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
         },
         {
           role: "user",
-          content: `Analyze this text and extract or estimate the carbon footprint value in kg CO2: ${text}`,
+          content: `Analyze this text and extract or estimate the carbon footprint value in kg CO2 *IMPORTANT: return only 1 value, which is the total number of overall analysis: ${text}`,
         },
       ],
       temperature: 0.7,
@@ -47,10 +47,12 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
     });
 
     const result = completion.choices[0]?.message?.content;
+    console.log(`raw result: ${result}`); // Debug log
     if (!result) return 0;
 
     // Extract numeric value from the response
     const match = result.match(/\d+(\.\d+)?/);
+    console.log(`extracted value: ${match}`); // Debug log
     return match ? parseFloat(match[0]) : 0;
   } catch (error: unknown) {
     console.error("Error analyzing with GPT:", error);
