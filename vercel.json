@@ -1,4 +1,5 @@
 {
+  "runtime": "edge",
   "functions": {
     "api/upload": {
       "maxDuration": 30
