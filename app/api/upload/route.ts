@@ -1,32 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir, readFile } from "fs/promises";
+import * as fs from "fs";
 import extract from "extract-zip";
 import OpenAI from "openai";
 import { join } from "path";
-import { existsSync } from "fs";
 import os from "os";
+import JSZip from "jszip";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-// Function to get all files dynamically - made async
-async function getAllFiles(dir: string): Promise<string[]> {
-  const files: string[] = [];
-  const fsPromises = await import("fs/promises");
-  const entries = await fsPromises.readdir(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await getAllFiles(fullPath)));
-    } else {
-      files.push(fullPath);
-    }
-  }
-  return files;
-}
 
 // Analyze text content with GPT
 async function analyzePDFWithGPT(text: string): Promise<number> {
@@ -49,7 +33,7 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
           content: `Analyze this text and extract or estimate the carbon footprint value in kg CO2. *IMPORTANT: return only 1 value, which is the total number of overall analysis: ${text.substring(
             0,
             10000
-          )}`, // Limiting text length
+          )}`,
         },
       ],
       temperature: 0.7,
@@ -89,16 +73,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Use os.tmpdir() for platform-independent temporary directory
-    const baseTempDir = os.tmpdir();
-    const sessionId = Date.now().toString();
-    const uploadDir = join(baseTempDir, `upload_${sessionId}`);
-    const extractDir = join(baseTempDir, `extract_${sessionId}`);
-
-    // Create directories using async methods
-    await mkdir(uploadDir, { recursive: true });
-    await mkdir(extractDir, { recursive: true });
-
     // Get the form data
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -114,96 +88,94 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save the uploaded file
+    // Get file as ArrayBuffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const zipPath = join(uploadDir, "upload.zip");
 
-    await writeFile(zipPath, buffer);
-    console.log(`ZIP saved to: ${zipPath}`);
+    // Use JSZip for in-memory extraction
+    const zip = new JSZip();
+    const contents = await zip.loadAsync(buffer);
 
-    try {
-      // Extract the ZIP file
-      await extract(zipPath, { dir: extractDir });
-      console.log(`Files extracted to: ${extractDir}`);
+    console.log(
+      "ZIP contents:",
+      Object.keys(contents.files).length,
+      "files found"
+    );
 
-      // Process files dynamically
-      const allFiles = await getAllFiles(extractDir);
-      console.log(`Found ${allFiles.length} files in extracted directory`);
+    // Filter for PDF and TXT files
+    const files = Object.keys(contents.files).filter(
+      (filename) =>
+        filename.toLowerCase().endsWith(".pdf") ||
+        filename.toLowerCase().endsWith(".txt")
+    );
 
-      const files = allFiles.filter(
-        (file) =>
-          file.toLowerCase().endsWith(".pdf") ||
-          file.toLowerCase().endsWith(".txt")
-      );
-      console.log(`Filtered ${files.length} PDF/TXT files to process`);
+    console.log("Filtered files:", files);
 
-      if (files.length === 0) {
-        return NextResponse.json(
-          { error: "No PDF or text files found in ZIP" },
-          { status: 400 }
-        );
-      }
-
-      // Process files immediately after extraction
-      let totalCarbonFootprint = 0;
-      const processedFiles = [];
-
-      for (const filePath of files) {
-        if (!existsSync(filePath)) {
-          console.error(`File doesn't exist: ${filePath}`);
-          continue;
-        }
-
-        try {
-          const fileBuffer = await readFile(filePath);
-          let fileContent: string;
-
-          if (filePath.toLowerCase().endsWith(".pdf")) {
-            fileContent = await readPDFContent(fileBuffer);
-          } else {
-            fileContent = fileBuffer.toString("utf-8");
-          }
-
-          if (fileContent && fileContent.trim() !== "") {
-            const carbonFootprint = await analyzePDFWithGPT(fileContent);
-            totalCarbonFootprint += carbonFootprint;
-            processedFiles.push({
-              path: filePath,
-              size: fileBuffer.length,
-              footprint: carbonFootprint,
-            });
-            console.log(`Processed ${filePath}: ${carbonFootprint} kg CO2`);
-          } else {
-            console.log(`Empty content in file: ${filePath}`);
-          }
-        } catch (fileError: unknown) {
-          console.error(`Error processing file ${filePath}:`, fileError);
-        }
-      }
-
-      return NextResponse.json({
-        message: "Upload successful",
-        totalCarbonFootprint,
-        analyzedFiles: processedFiles.length,
-        processedFiles,
-      });
-    } catch (error: unknown) {
-      console.error("Error processing ZIP:", error);
+    if (files.length === 0) {
       return NextResponse.json(
-        {
-          error: "Failed to process ZIP file",
-          details: error instanceof Error ? error.message : "Unknown error",
-        },
+        { error: "No PDF or text files found in ZIP" },
         { status: 400 }
       );
     }
+
+    // Process files in memory
+    let totalCarbonFootprint = 0;
+    const processedFiles = [];
+
+    for (const filename of files) {
+      console.log(`Processing file: ${filename}`);
+      try {
+        // Skip directories
+        if (contents.files[filename].dir) continue;
+
+        // Get file content as array buffer
+        const fileData = await contents.files[filename].async("nodebuffer");
+
+        if (!fileData || fileData.length === 0) {
+          console.log(`Empty file: ${filename}`);
+          continue;
+        }
+
+        let fileContent: string;
+        if (filename.toLowerCase().endsWith(".pdf")) {
+          fileContent = await readPDFContent(fileData);
+        } else {
+          fileContent = fileData.toString("utf-8");
+        }
+
+        if (fileContent && fileContent.trim() !== "") {
+          console.log(
+            `Extracted content from ${filename} (${fileContent.length} chars)`
+          );
+          const carbonFootprint = await analyzePDFWithGPT(fileContent);
+          totalCarbonFootprint += carbonFootprint;
+          processedFiles.push({
+            name: filename,
+            size: fileData.length,
+            footprint: carbonFootprint,
+          });
+          console.log(`Analyzed ${filename}: ${carbonFootprint} kg CO2`);
+        } else {
+          console.log(`Empty content extracted from file: ${filename}`);
+        }
+      } catch (fileError: unknown) {
+        console.error(`Error processing file ${filename}:`, fileError);
+      }
+    }
+
+    return NextResponse.json({
+      message: "Upload successful",
+      totalCarbonFootprint,
+      analyzedFiles: processedFiles.length,
+      processedFiles,
+    });
   } catch (error: unknown) {
     console.error("Error processing files:", error);
     return NextResponse.json(
       {
         error: "File processing failed",
         details: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
