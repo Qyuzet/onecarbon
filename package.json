@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "compile": "node scripts/compile.mjs",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "solc": "^0.8.0",
     "@types/formidable": "^3.4.5",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.4",

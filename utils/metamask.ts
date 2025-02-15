@@ -5,19 +5,16 @@ type EthereumRequest = {
   params?: unknown[];
 };
 
-type MetaMaskError = {
-  code: number;
-  message: string;
-};
+type MetaMaskEventHandler = (params: unknown) => void;
 
 declare global {
   interface Window {
     ethereum?: {
       request: (args: EthereumRequest) => Promise<unknown>;
-      on: (eventName: string, handler: (params: unknown) => void) => void;
+      on: (eventName: string, handler: MetaMaskEventHandler) => void;
       removeListener: (
         eventName: string,
-        handler: (params: unknown) => void
+        handler: MetaMaskEventHandler
       ) => void;
       isMetaMask?: boolean;
     };
@@ -30,6 +27,7 @@ export const connectMetaMask = async () => {
       throw new Error("Please install MetaMask browser extension");
     }
 
+    // Request account access
     const accounts = (await window.ethereum.request({
       method: "eth_requestAccounts",
     })) as string[];
@@ -39,35 +37,70 @@ export const connectMetaMask = async () => {
     const network = await provider.getNetwork();
 
     return {
+      isConnected: true,
       account,
       provider,
       network,
-      isConnected: true,
     };
   } catch (error) {
-    const metaMaskError = error as MetaMaskError;
-    console.error("Error connecting to MetaMask:", metaMaskError);
-    throw new Error(metaMaskError.message || "Failed to connect to MetaMask");
+    console.error("Error connecting to MetaMask:", error);
+    throw error;
   }
 };
 
 export const checkMetaMaskConnection = async () => {
   try {
     if (!window.ethereum) {
-      return { isConnected: false };
+      return { isConnected: false, account: null };
     }
 
     const accounts = (await window.ethereum.request({
       method: "eth_accounts",
     })) as string[];
 
+    if (accounts.length === 0) {
+      return { isConnected: false, account: null };
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const network = await provider.getNetwork();
+
     return {
-      isConnected: accounts.length > 0,
-      account: accounts[0] || null,
+      isConnected: true,
+      account: accounts[0],
+      provider,
+      network,
     };
   } catch (error) {
-    const metaMaskError = error as MetaMaskError;
-    console.error("Error checking MetaMask connection:", metaMaskError);
-    return { isConnected: false };
+    console.error("Error checking MetaMask connection:", error);
+    return { isConnected: false, account: null };
   }
+};
+
+// Listen for account changes
+export const setupMetaMaskListeners = (
+  onAccountsChanged: (accounts: string[]) => void,
+  onChainChanged: (chainId: string) => void
+) => {
+  if (!window.ethereum) return;
+
+  const handleAccountsChanged = (accounts: unknown) => {
+    if (Array.isArray(accounts)) {
+      onAccountsChanged(accounts as string[]);
+    }
+  };
+
+  const handleChainChanged = (chainId: unknown) => {
+    if (typeof chainId === "string") {
+      onChainChanged(chainId);
+    }
+  };
+
+  window.ethereum.on("accountsChanged", handleAccountsChanged);
+  window.ethereum.on("chainChanged", handleChainChanged);
+
+  return () => {
+    window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
+    window.ethereum?.removeListener("chainChanged", handleChainChanged);
+  };
 };

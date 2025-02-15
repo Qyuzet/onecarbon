@@ -4,12 +4,62 @@ import { useState } from "react";
 import Image from "next/image";
 import { connectMetaMask, checkMetaMaskConnection } from "@/utils/metamask";
 import { ethers } from "ethers";
+// Import the contract ABI directly
+const contractArtifact = {
+  abi: [
+    {
+      inputs: [],
+      name: "nextId",
+      outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [{ internalType: "string", name: "companyName", type: "string" }],
+      name: "registerCompany",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [{ internalType: "uint256", name: "amount", type: "uint256" }],
+      name: "depositCarbon",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        { internalType: "address", name: "companyAddress", type: "address" },
+      ],
+      name: "isCompanyRegistered",
+      outputs: [{ internalType: "bool", name: "", type: "bool" }],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        { internalType: "address", name: "companyAddress", type: "address" },
+      ],
+      name: "getCompanyName",
+      outputs: [{ internalType: "string", name: "", type: "string" }],
+      stateMutability: "view",
+      type: "function",
+    },
+  ],
+};
 
 interface WalletState {
   isConnected: boolean;
   account: string | null;
   provider?: ethers.providers.Web3Provider;
   network?: ethers.providers.Network;
+}
+
+interface CompanyState {
+  name: string;
+  isRegistered: boolean;
+  isRegistering: boolean;
 }
 
 interface ProcessedDocument {
@@ -27,11 +77,16 @@ interface APIProcessedFile {
   contentLength: number;
 }
 
-const CarbonTracking = () => {
-  // Wallet state
+const CarbonTrackingComponent = () => {
+  // Wallet and company state
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
     account: null,
+  });
+  const [company, setCompany] = useState<CompanyState>({
+    name: "",
+    isRegistered: false,
+    isRegistering: false,
   });
 
   // State declarations
@@ -46,13 +101,46 @@ const CarbonTracking = () => {
   const [terminalStatus, setTerminalStatus] = useState<string[]>([]);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Check wallet connection on mount
+  const addTerminalStatus = (status: string) => {
+    setTerminalStatus((prev) => [...prev, status]);
+  };
+
+  // Check wallet connection and company registration on mount
   useEffect(() => {
-    const checkWallet = async () => {
+    const checkWalletAndCompany = async () => {
       const connection = await checkMetaMaskConnection();
       setWallet((prev) => ({ ...prev, ...connection }));
+
+      if (connection.isConnected && connection.account && window.ethereum) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(
+            process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
+            contractArtifact.abi,
+            signer
+          );
+
+          const isCompanyRegistered = await contract.isCompanyRegistered(
+            connection.account
+          );
+          if (isCompanyRegistered) {
+            const companyName = await contract.getCompanyName(
+              connection.account
+            );
+            setCompany((prev) => ({
+              ...prev,
+              name: companyName,
+              isRegistered: true,
+            }));
+            addTerminalStatus(`Company registered: ${companyName}`);
+          }
+        } catch (error) {
+          console.error("Error checking company registration:", error);
+        }
+      }
     };
-    checkWallet();
+    checkWalletAndCompany();
   }, []);
 
   // Handle wallet connection
@@ -71,6 +159,44 @@ const CarbonTracking = () => {
     }
   };
 
+  // Handle company registration
+  const handleRegisterCompany = async () => {
+    if (!company.name.trim()) {
+      addTerminalStatus("Error: Company name cannot be empty");
+      return;
+    }
+
+    setCompany((prev) => ({ ...prev, isRegistering: true }));
+    addTerminalStatus("Registering company...");
+
+    try {
+      if (!window.ethereum) {
+        throw new Error("MetaMask not installed");
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
+        contractArtifact.abi,
+        signer
+      );
+
+      const tx = await contract.registerCompany(company.name);
+      addTerminalStatus("Waiting for transaction confirmation...");
+      await tx.wait();
+
+      setCompany((prev) => ({ ...prev, isRegistered: true }));
+      addTerminalStatus(`Company "${company.name}" successfully registered!`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Registration failed";
+      addTerminalStatus(`Error: ${errorMessage}`);
+    } finally {
+      setCompany((prev) => ({ ...prev, isRegistering: false }));
+    }
+  };
+
   // Calculate total carbon footprint from all documents
   useEffect(() => {
     if (documents.length > 0) {
@@ -84,20 +210,12 @@ const CarbonTracking = () => {
     }
   }, [documents]);
 
-  const addTerminalStatus = (status: string) => {
-    setTerminalStatus((prev) => [...prev, status]);
-  };
-
-  // Auto-scroll terminal when new messages are added
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [terminalStatus]);
-
+  // Handle file upload
   const handleUpload = async () => {
     if (!file) return alert("Please select a ZIP file first!");
     if (!file.name.endsWith(".zip")) return alert("Please select a ZIP file!");
+    if (!company.isRegistered)
+      return alert("Please register your company first!");
 
     setIsLoading(true);
     setError(null);
@@ -137,7 +255,7 @@ const CarbonTracking = () => {
           footprint: file.footprint,
           category: "",
           deposit: 0,
-          address: "",
+          address: wallet.account || "",
         };
       });
 
@@ -153,6 +271,22 @@ const CarbonTracking = () => {
             .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
         })
       );
+
+      // Store carbon data on blockchain
+      if (wallet.isConnected && company.isRegistered && window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(
+          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
+          contractArtifact.abi,
+          signer
+        );
+
+        addTerminalStatus("Storing carbon data on blockchain...");
+        const tx = await contract.depositCarbon(zipTotal);
+        await tx.wait();
+        addTerminalStatus("Carbon data stored successfully!");
+      }
 
       setDocuments(finalDocuments);
       addTerminalStatus("Processing completed successfully!");
@@ -189,11 +323,35 @@ const CarbonTracking = () => {
         <div className="flex flex-col items-center p-6">
           {/* Connector */}
           <div className="flex justify-start w-full max-w-4xl mt-4 items-center gap-4">
-            <input
-              type="text"
-              placeholder="-- input company name --"
-              className="scale-[80%] border border-gray-600 text-white p-2 rounded w-50 text-center bg-transparent hover:border-white transition-colors duration-300"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="-- input company name --"
+                value={company.name}
+                onChange={(e) =>
+                  setCompany((prev) => ({ ...prev, name: e.target.value }))
+                }
+                disabled={company.isRegistered || !wallet.isConnected}
+                className={`scale-[80%] border border-gray-600 text-white p-2 rounded w-50 text-center bg-transparent ${
+                  !company.isRegistered && wallet.isConnected
+                    ? "hover:border-white"
+                    : ""
+                } transition-colors duration-300`}
+              />
+              {wallet.isConnected && !company.isRegistered && (
+                <button
+                  onClick={handleRegisterCompany}
+                  disabled={company.isRegistering || !company.name.trim()}
+                  className={`scale-[80%] bg-transparent border-2 border-white text-white py-2 px-4 rounded-xl text-xs button-hover hover:bg-white hover:text-black transition-colors duration-300 ${
+                    company.isRegistering || !company.name.trim()
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                >
+                  {company.isRegistering ? "Registering..." : "Register"}
+                </button>
+              )}
+            </div>
             <div
               className={`scale-[80%] w-4 h-4 rounded-lg ${
                 wallet.isConnected ? "bg-green-500" : "bg-red-500"
@@ -212,17 +370,6 @@ const CarbonTracking = () => {
                   )}...${wallet.account?.slice(-4)}`
                 : "Connect Wallet"}
             </button>
-            <div className="absolute right-44 flex items-center justify-center">
-              <button className="button-hover p-2 rounded-lg hover:bg-gray-800/50 transition-all duration-300">
-                <Image
-                  src="/download-icon.png"
-                  alt="download icon"
-                  width={32}
-                  height={32}
-                  className="transition-transform hover:scale-110 duration-300"
-                />
-              </button>
-            </div>
           </div>
 
           {/* Header */}
@@ -376,9 +523,9 @@ const CarbonTracking = () => {
               </div>
               <button
                 onClick={handleUpload}
-                disabled={isLoading || !file}
+                disabled={isLoading || !file || !company.isRegistered}
                 className={`w-full border-2 border-white/20 transition text-white py-2 px-6 rounded ${
-                  isLoading || !file
+                  isLoading || !file || !company.isRegistered
                     ? "opacity-50 cursor-not-allowed"
                     : "bg-transparent hover:bg-blue-700"
                 }`}
@@ -439,4 +586,4 @@ const CarbonTracking = () => {
   );
 };
 
-export default CarbonTracking;
+export default CarbonTrackingComponent;
