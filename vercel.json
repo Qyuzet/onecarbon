@@ -1,8 +1,0 @@
-{
-  "functions": {
-    "api/upload": {
-      "runtime": "nodejs22.11.0",
-      "maxDuration": 30
-    }
-  }
-}
