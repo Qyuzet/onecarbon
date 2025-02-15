@@ -37,7 +37,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
 - **Backend**
 
   - Next.js API Routes
-  - OpenAI GPT-3.5 Integration
+  - Generative AI Integration (soon RAG)
   - PDF Parser
   - File System Management
 
@@ -147,7 +147,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- OpenAI for GPT-3.5 API
+- OpenAI API
 - Manta Network for privacy features
 - Next.js team for the amazing framework
 - All contributors and supporters
