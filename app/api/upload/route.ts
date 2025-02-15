@@ -93,9 +93,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Create temporary directories
-    const uploadDir = join(process.cwd(), "uploads");
-    const extractDir = join(process.cwd(), "extracted");
+    // ✅ Handle temp directories correctly for both local and Vercel
+    const uploadDir =
+      process.env.NODE_ENV === "production"
+        ? "/tmp/uploads"
+        : join(process.cwd(), "uploads");
+    const extractDir =
+      process.env.NODE_ENV === "production"
+        ? "/tmp/extracted"
+        : join(process.cwd(), "extracted");
 
     // Ensure directories exist and are empty
     if (fs.existsSync(uploadDir)) {
@@ -105,8 +111,8 @@ export async function POST(req: NextRequest) {
       fs.rmSync(extractDir, { recursive: true, force: true });
     }
 
-    fs.mkdirSync(uploadDir);
-    fs.mkdirSync(extractDir);
+    fs.mkdirSync(uploadDir, { recursive: true });
+    fs.mkdirSync(extractDir, { recursive: true });
 
     // Get the form data
     const formData = await req.formData();
