@@ -26,6 +26,11 @@ const CarbonTracking = () => {
   const [analyzedFiles, setAnalyzedFiles] = useState(0);
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [totalDocuments, setTotalDocuments] = useState(0);
+  const [terminalStatus, setTerminalStatus] = useState<string[]>([]);
+
+  const addTerminalStatus = (status: string) => {
+    setTerminalStatus((prev) => [...prev, status]);
+  };
 
   const handleUpload = async () => {
     if (!file) return alert("Please select a ZIP file first!");
@@ -33,11 +38,16 @@ const CarbonTracking = () => {
 
     setIsLoading(true);
     setError(null);
+    setTerminalStatus([]); // Clear previous status
 
     try {
+      addTerminalStatus("Starting file processing...");
+      addTerminalStatus(`Reading ZIP file: ${file.name}`);
+
       const formData = new FormData();
       formData.append("file", file);
 
+      addTerminalStatus("Contacting API endpoint...");
       const res = await fetch("/api/upload/", {
         method: "POST",
         body: formData,
@@ -51,17 +61,20 @@ const CarbonTracking = () => {
       setAnalyzedFiles(data.analyzedFiles);
 
       // Process each file from the ZIP
-      const newDocuments = data.processedFiles.map(
-        (file: APIProcessedFile) => ({
+      addTerminalStatus(`Found ${data.processedFiles.length} documents in ZIP`);
+      const newDocuments = data.processedFiles.map((file: APIProcessedFile) => {
+        addTerminalStatus(`Processing document: ${file.name}`);
+        return {
           name: file.name,
           footprint: file.footprint,
           category: "",
           deposit: 0,
           address: "",
-        })
-      );
+        };
+      });
 
       // Calculate cumulative deposits from bottom to top
+      addTerminalStatus("Calculating carbon deposits...");
       const updatedDocuments = newDocuments.map(
         (doc: APIProcessedFile, index: number) => {
           const deposit = newDocuments
@@ -82,6 +95,7 @@ const CarbonTracking = () => {
       setTotalDocuments((prev) => prev + data.analyzedFiles);
 
       // Add new documents to the beginning of the array and recalculate all deposits
+      addTerminalStatus("Updating document history...");
       const allDocuments = [...updatedDocuments, ...documents];
       const finalDocuments = allDocuments.map(
         (doc: ProcessedDocument, index: number) => ({
@@ -97,9 +111,11 @@ const CarbonTracking = () => {
       );
 
       setDocuments(finalDocuments);
+      addTerminalStatus("Processing completed successfully!");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-      setResult(null);
+      const errorMessage = err instanceof Error ? err.message : "Upload failed";
+      setError(errorMessage);
+      addTerminalStatus(`Error: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +169,11 @@ const CarbonTracking = () => {
 
           {/* Header */}
           <h1 className="my-20 text-2xl font-extrabold text-center">
-            This Year <span className="text-6xl">-- kg</span> CO₂
+            Total Carbon Footprint:{" "}
+            <span className="text-6xl">
+              {result ? result.toFixed(2) : "--"} kg
+            </span>{" "}
+            CO₂
           </h1>
 
           {/* Stats Section */}
@@ -230,13 +250,28 @@ const CarbonTracking = () => {
         <div className="mt-16 flex flex-col items-center justify-center space-y-4 pl-6 w-full">
           <div className="flex items-center space-x-4">
             <div className="flex flex-col gap-4 items-start justify-center h-full">
-              <input
-                type="file"
-                accept=".zip"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="border border-gray-600 p-2 rounded"
-              />
-              <div className="flex h-full flex-col items-center justify-center w-full text-center min-h-20 border-2 border-white p-4">
+              <div className="flex items-center gap-2">
+                <button
+                  className="border border-gray-600 p-2 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                  onClick={() =>
+                    document
+                      .querySelector<HTMLInputElement>('input[type="file"]')
+                      ?.click()
+                  }
+                >
+                  Choose File
+                </button>
+                <span className="text-gray-400">
+                  {file ? file.name : "No file chosen"}
+                </span>
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                />
+              </div>
+              <div className="flex h-full flex-col items-center justify-center w-full text-center min-h-20 border-2 border-white/20 rounded-lg p-4 bg-white/5">
                 <span className="text-white">
                   {isLoading ? (
                     <div>
@@ -283,7 +318,7 @@ const CarbonTracking = () => {
               <button
                 onClick={handleUpload}
                 disabled={isLoading || !file}
-                className={`w-full border-2 border-white transition text-white py-2 px-6 rounded ${
+                className={`w-full border-2 border-white/20 transition text-white py-2 px-6 rounded ${
                   isLoading || !file
                     ? "opacity-50 cursor-not-allowed"
                     : "bg-transparent hover:bg-blue-700"
@@ -294,26 +329,44 @@ const CarbonTracking = () => {
             </div>
             <div className="flex flex-col w-full gap-4 items-start justify-start">
               <div className="flex flex-col gap-2 items-start justify-center">
-                <span className="h-full">endpoint: </span>
-                <div className="flex items-center justify-center w-96 h-12 border-2 border-white rounded-lg">
-                  <span className="w-full overflow-x-auto whitespace-nowrap text-gray-400 block">{`http://localhost/carbontracking/`}</span>
+                <span className="text-gray-400">endpoint:</span>
+                <div className="flex items-center justify-center w-96 h-12 border-2 border-white/20 rounded-lg bg-white/5">
+                  <span className="w-full overflow-x-auto whitespace-nowrap text-gray-400 px-4">{`http://localhost/carbontracking/`}</span>
                 </div>
               </div>
               <div className="flex flex-col gap-2 items-start justify-center">
-                <span className="h-full">agentic agent: </span>
+                <span className="text-gray-400">agentic agent:</span>
                 <div className="flex items-center justify-center gap-2 w-96 h-12 ">
-                  <button className="w-full px-4 py-2 border-2 border-white rounded-lg button-hover hover:bg-white hover:text-black transition-colors duration-300 capitalize">
+                  <button className="w-full px-4 py-2 border-2 border-white/20 rounded-lg bg-white/5 hover:bg-white/10 transition-colors duration-300 capitalize">
                     Set Agents
                   </button>
-                  <button className="w-full px-4 py-2 border-2 border-white rounded-lg button-hover hover:bg-white hover:text-black transition-colors duration-300 capitalize">
+                  <button className="w-full px-4 py-2 border-2 border-white/20 rounded-lg bg-white/5 hover:bg-white/10 transition-colors duration-300 capitalize">
                     Connect Agents
                   </button>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 items-start justify-center">
-                <span className="h-full">terminal: </span>
-                <div className="flex border-2 border-white rounded-lg h-full items-center justify-center gap-2 w-96 h-12 ">
-                  <span>...</span>
+              <div className="flex flex-col gap-2 items-start justify-center w-full">
+                <span className="text-gray-400">terminal:</span>
+                <div className="flex flex-col border-2 border-white/20 rounded-lg w-96 h-32 bg-white/5 overflow-hidden">
+                  {terminalStatus.length > 0 ? (
+                    <div className="p-4 overflow-y-auto font-mono text-sm h-full">
+                      {terminalStatus.map((status, index) => (
+                        <div key={index} className="text-gray-300">
+                          <span className="text-green-500">$</span> {status}
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="text-gray-300">
+                          <span className="text-green-500">$</span>{" "}
+                          <span className="animate-pulse">_</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-500 font-mono text-sm">
+                      <span>No active processes</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
