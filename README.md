@@ -37,7 +37,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
 - **Backend**
 
   - Next.js API Routes
-  - OpenAI GPT-3.5 Integration
+  - Generative AI Integration (soon RAG)
   - PDF Parser
   - File System Management
 
