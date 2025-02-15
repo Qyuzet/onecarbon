@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/react";
 
 const montserrat = localFont({
   src: [
@@ -73,6 +74,7 @@ export default function RootLayout({
         <link rel="icon" href="/oCarbon-logo.png" />
       </head>
       <body className={montserrat.variable}>{children}</body>
+      <Analytics />
     </html>
   );
 }
