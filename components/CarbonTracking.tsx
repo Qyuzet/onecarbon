@@ -3,12 +3,29 @@ import React from "react";
 import { useState } from "react";
 import Image from "next/image";
 
+interface ProcessedDocument {
+  name: string;
+  footprint: number;
+  category?: string;
+  deposit: number;
+  address?: string;
+}
+
+interface APIProcessedFile {
+  name: string;
+  footprint: number;
+  size: number;
+  contentLength: number;
+}
+
 const CarbonTracking = () => {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyzedFiles, setAnalyzedFiles] = useState(0);
+  const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
+  const [totalDocuments, setTotalDocuments] = useState(0);
 
   const handleUpload = async () => {
     if (!file) return alert("Please select a ZIP file first!");
@@ -32,6 +49,35 @@ const CarbonTracking = () => {
 
       setResult(data.totalCarbonFootprint);
       setAnalyzedFiles(data.analyzedFiles);
+
+      // Process each file from the ZIP
+      const newDocuments = data.processedFiles.map(
+        (file: APIProcessedFile) => ({
+          name: file.name,
+          footprint: file.footprint,
+          category: "",
+          deposit: 0, // Temporary deposit value
+          address: "",
+        })
+      );
+
+      // Calculate cumulative deposit
+      const cumulativeDeposit = newDocuments.reduce(
+        (acc: number, doc: ProcessedDocument) => acc + doc.footprint,
+        0
+      );
+
+      // Update documents with cumulative deposit
+      const updatedDocuments = newDocuments.map((doc) => ({
+        ...doc,
+        deposit: cumulativeDeposit,
+      }));
+
+      // Update total documents count
+      setTotalDocuments((prev) => prev + data.analyzedFiles);
+
+      // Add new documents to the beginning of the array
+      setDocuments([...updatedDocuments, ...documents]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
       setResult(null);
@@ -116,13 +162,31 @@ const CarbonTracking = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-t border-gray-700">
-                      <td className="py-3 px-4">empty</td>
-                      <td className="py-3 px-4">-</td>
-                      <td className="py-3 px-4">empty</td>
-                      <td className="py-3 px-4">-</td>
-                      <td className="py-3 px-4">----</td>
-                    </tr>
+                    {documents.length > 0 ? (
+                      documents.map((doc, index) => (
+                        <tr key={index} className="border-t border-gray-700">
+                          <td className="py-3 px-4">{doc.name}</td>
+                          <td className="py-3 px-4">
+                            {doc.footprint.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-4">
+                            {doc.category || "empty"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {doc.deposit.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-4">{doc.address || "----"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="border-t border-gray-700">
+                        <td className="py-3 px-4">empty</td>
+                        <td className="py-3 px-4">-</td>
+                        <td className="py-3 px-4">empty</td>
+                        <td className="py-3 px-4">-</td>
+                        <td className="py-3 px-4">----</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -134,7 +198,7 @@ const CarbonTracking = () => {
             <div className="flex flex-col items-center justify-center w-full mt-10">
               <span className="text-3xl text-center font-montserrat font-bold mb-4">
                 {" "}
-                {`---`}
+                {totalDocuments || "---"}
               </span>
               <span className="text-3xl text-center font-montserrat font-semibold">
                 {" "}
@@ -146,9 +210,9 @@ const CarbonTracking = () => {
         </div>
 
         {/* File Upload & Processing Section */}
-        <div className="mt-16 flex flex-col items-center justify-center space-y-4 pl-6 w-full ">
-          <div className="flex space-x-4">
-            <div className="flex flex-col gap-4 items-start justify-center">
+        <div className="mt-16 flex flex-col items-center justify-center space-y-4 pl-6 w-full">
+          <div className="flex items-center space-x-4">
+            <div className="flex flex-col gap-4 items-start justify-center h-full">
               <input
                 type="file"
                 accept=".zip"

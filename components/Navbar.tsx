@@ -10,21 +10,41 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex w-full justify-center items-center">
             <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4 text-white">
-              <Button variant="ghost" asChild>
+              <Button
+                variant="ghost"
+                asChild
+                className="button-hover hover:bg-white hover:text-black transition-all duration-300"
+              >
                 <Link href="/">Dashboard</Link>
               </Button>
-              <Button variant="ghost" asChild>
+              <Button
+                variant="ghost"
+                asChild
+                className="button-hover hover:bg-white hover:text-black transition-all duration-300"
+              >
                 <Link href="/carbontracking">Carbon Tracking</Link>
               </Button>
-              <Button variant="ghost" asChild>
+              <Button
+                variant="ghost"
+                asChild
+                className="button-hover hover:bg-white hover:text-black transition-all duration-300"
+              >
                 <Link href="/#ecosystem">Ecosystem</Link>
               </Button>
-              <Button variant="ghost" asChild>
+              <Button
+                variant="ghost"
+                asChild
+                className="button-hover hover:bg-white hover:text-black transition-all duration-300"
+              >
                 <Link href="https://manta.network/" target="_blank">
                   Network
                 </Link>
               </Button>
-              <Button variant="ghost" asChild>
+              <Button
+                variant="ghost"
+                asChild
+                className="button-hover hover:bg-white hover:text-black transition-all duration-300"
+              >
                 <Link href="/consultation">Consultation</Link>
               </Button>
             </div>

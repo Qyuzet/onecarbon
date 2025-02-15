@@ -27,7 +27,7 @@ export default function Dashboard() {
               and store it on blockchain
             </p>
             <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-              <button className="w-full sm:w-auto btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md hover:bg-white/10 transition-colors">
+              <button className="w-full sm:w-auto px-10 text-white bg-transparent border-2 py-2 border-white rounded-md button-hover hover:bg-white hover:text-black transition-all duration-300">
                 <Link href="/carbontracking">
                   <span className="sm:hidden">
                     Start Carbon
@@ -39,7 +39,7 @@ export default function Dashboard() {
                   </span>
                 </Link>
               </button>
-              <button className="w-full sm:w-auto btn-primary px-10 text-white bg-transparent border-2 py-2 border-white rounded-md hover:bg-white/10 transition-colors">
+              <button className="w-full sm:w-auto px-10 text-white bg-transparent border-2 py-2 border-white rounded-md button-hover hover:bg-white hover:text-black transition-all duration-300">
                 <Link href="#ecosystem">Ecosystem</Link>
               </button>
             </div>

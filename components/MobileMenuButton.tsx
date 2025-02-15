@@ -11,7 +11,7 @@ export default function MobileMenuButton() {
     <>
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500"
+        className="inline-flex items-center justify-center p-2 rounded-md text-white button-hover hover:bg-white hover:text-black transition-all duration-300"
       >
         {mobileMenuOpen ? (
           <X className="h-6 w-6" />
@@ -23,21 +23,41 @@ export default function MobileMenuButton() {
       {mobileMenuOpen && (
         <div className="absolute top-16 inset-x-0 z-[998] bg-white dark:bg-gray-800 sm:hidden">
           <div className="pt-2 pb-3 space-y-1 px-4">
-            <Button variant="ghost" asChild className="w-full justify-start">
+            <Button
+              variant="ghost"
+              asChild
+              className="w-full justify-start button-hover hover:bg-white hover:text-black transition-all duration-300"
+            >
               <Link href="/">Dashboard</Link>
             </Button>
-            <Button variant="ghost" asChild className="w-full justify-start">
+            <Button
+              variant="ghost"
+              asChild
+              className="w-full justify-start button-hover hover:bg-white hover:text-black transition-all duration-300"
+            >
               <Link href="/carbontracking">Carbon Tracking</Link>
             </Button>
-            <Button variant="ghost" asChild className="w-full justify-start">
+            <Button
+              variant="ghost"
+              asChild
+              className="w-full justify-start button-hover hover:bg-white hover:text-black transition-all duration-300"
+            >
               <Link href="/#ecosystem">Ecosystem</Link>
             </Button>
-            <Button variant="ghost" asChild className="w-full justify-start">
+            <Button
+              variant="ghost"
+              asChild
+              className="w-full justify-start button-hover hover:bg-white hover:text-black transition-all duration-300"
+            >
               <Link href="https://manta.network/" target="_blank">
                 Network
               </Link>
             </Button>
-            <Button variant="ghost" asChild className="w-full justify-start">
+            <Button
+              variant="ghost"
+              asChild
+              className="w-full justify-start button-hover hover:bg-white hover:text-black transition-all duration-300"
+            >
               <Link href="/consultation">Consultation</Link>
             </Button>
           </div>
