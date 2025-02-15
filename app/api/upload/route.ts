@@ -26,6 +26,7 @@ function getAllFiles(dir: string): string[] {
   return files;
 }
 
+// Analyze text content with GPT
 async function analyzePDFWithGPT(text: string): Promise<number> {
   try {
     const completion = await openai.chat.completions.create({
@@ -38,7 +39,7 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
         },
         {
           role: "user",
-          content: `Analyze this text and extract or estimate the carbon footprint value in kg CO2 *IMPORTANT: return only 1 value, which is the total number of overall analysis: ${text}`,
+          content: `Analyze this text and extract or estimate the carbon footprint value in kg CO2. *IMPORTANT: return only 1 value, which is the total number of overall analysis: ${text}`,
         },
       ],
       temperature: 0.7,
@@ -57,6 +58,7 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
   }
 }
 
+// Read and extract text from PDFs
 async function readPDFContent(buffer: Buffer): Promise<string> {
   try {
     const pdfParse = (await import("pdf-parse")).default;
@@ -77,9 +79,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // ✅ Handle Vercel temp storage
-    const uploadDir = "/tmp/uploads";
-    const extractDir = "/tmp/extracted";
+    // ✅ Use alternative temp storage to avoid Vercel auto-clearing `/tmp`
+    const baseTempDir = "/var/task/tmp"; // Alternative storage
+    const uploadDir = join(baseTempDir, "uploads");
+    const extractDir = join(baseTempDir, "extracted");
 
     // Ensure directories exist and are empty
     if (fs.existsSync(uploadDir))
@@ -116,21 +119,21 @@ export async function POST(req: NextRequest) {
       // Extract the ZIP file
       await extract(zipPath, { dir: extractDir });
 
-      // 🔍 Debugging: Check extracted files
-      const extractedItems = fs.readdirSync(extractDir);
-      console.log("Extracted items in directory:", extractedItems);
+      // ✅ Debugging: Ensure files were extracted
+      console.log(
+        "Extracted files in /var/task/tmp/extracted:",
+        fs.readdirSync(extractDir)
+      );
 
       // Process files dynamically
       const allFiles = getAllFiles(extractDir);
       console.log("Found files:", allFiles); // Debug log
 
-      const files = allFiles.filter((file) => {
-        return (
+      const files = allFiles.filter(
+        (file) =>
           file.toLowerCase().endsWith(".pdf") ||
           file.toLowerCase().endsWith(".txt")
-        );
-      });
-
+      );
       console.log("Filtered files to process:", files); // Debug log
 
       if (files.length === 0) {
@@ -140,9 +143,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // ✅ Process files immediately after extraction to avoid deletion
       let totalCarbonFootprint = 0;
+      const filesContent: { [key: string]: string } = {}; // Store file data
+
       for (const filePath of files) {
-        console.log("Processing file:", filePath); // ✅ Debugging log
+        console.log("Processing file:", filePath); // Debugging log
 
         if (!fs.existsSync(filePath)) {
           console.error(`Skipping missing file: ${filePath}`);
@@ -155,14 +161,19 @@ export async function POST(req: NextRequest) {
           const fileBuffer = await fs.promises.readFile(filePath);
           const fileContent = await readPDFContent(fileBuffer);
           if (fileContent) {
-            totalCarbonFootprint += await analyzePDFWithGPT(fileContent);
+            filesContent[filePath] = fileContent; // Store content in memory
           }
         } else {
           const fileContent = await fs.promises.readFile(filePath, "utf-8");
           if (fileContent) {
-            totalCarbonFootprint += await analyzePDFWithGPT(fileContent);
+            filesContent[filePath] = fileContent; // Store content in memory
           }
         }
+      }
+
+      // ✅ Now process files from memory instead of re-reading
+      for (const filePath in filesContent) {
+        totalCarbonFootprint += await analyzePDFWithGPT(filesContent[filePath]);
       }
 
       return NextResponse.json({
