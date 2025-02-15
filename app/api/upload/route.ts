@@ -116,6 +116,10 @@ export async function POST(req: NextRequest) {
       // Extract the ZIP file
       await extract(zipPath, { dir: extractDir });
 
+      // 🔍 Debugging: Check extracted files
+      const extractedItems = fs.readdirSync(extractDir);
+      console.log("Extracted items in directory:", extractedItems);
+
       // Process files dynamically
       const allFiles = getAllFiles(extractDir);
       console.log("Found files:", allFiles); // Debug log
@@ -138,6 +142,13 @@ export async function POST(req: NextRequest) {
 
       let totalCarbonFootprint = 0;
       for (const filePath of files) {
+        console.log("Processing file:", filePath); // ✅ Debugging log
+
+        if (!fs.existsSync(filePath)) {
+          console.error(`Skipping missing file: ${filePath}`);
+          continue;
+        }
+
         const isPDF = filePath.toLowerCase().endsWith(".pdf");
 
         if (isPDF) {
