@@ -2,6 +2,15 @@
 import React, { useEffect, useRef } from "react";
 import { useState } from "react";
 import Image from "next/image";
+import { connectMetaMask, checkMetaMaskConnection } from "@/utils/metamask";
+import { ethers } from "ethers";
+
+interface WalletState {
+  isConnected: boolean;
+  account: string | null;
+  provider?: ethers.providers.Web3Provider;
+  network?: ethers.providers.Network;
+}
 
 interface ProcessedDocument {
   name: string;
@@ -19,6 +28,12 @@ interface APIProcessedFile {
 }
 
 const CarbonTracking = () => {
+  // Wallet state
+  const [wallet, setWallet] = useState<WalletState>({
+    isConnected: false,
+    account: null,
+  });
+
   // State declarations
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<number | null>(null);
@@ -30,6 +45,31 @@ const CarbonTracking = () => {
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [terminalStatus, setTerminalStatus] = useState<string[]>([]);
   const terminalRef = useRef<HTMLDivElement>(null);
+
+  // Check wallet connection on mount
+  useEffect(() => {
+    const checkWallet = async () => {
+      const connection = await checkMetaMaskConnection();
+      setWallet((prev) => ({ ...prev, ...connection }));
+    };
+    checkWallet();
+  }, []);
+
+  // Handle wallet connection
+  const handleConnectWallet = async () => {
+    try {
+      addTerminalStatus("Connecting to MetaMask...");
+      const connection = await connectMetaMask();
+      setWallet(connection);
+      addTerminalStatus(`Connected to account: ${connection.account}`);
+      addTerminalStatus(`Network: ${connection.network.name}`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Connection failed";
+      setError(errorMessage);
+      addTerminalStatus(`Error: ${errorMessage}`);
+    }
+  };
 
   // Calculate total carbon footprint from all documents
   useEffect(() => {
@@ -61,8 +101,8 @@ const CarbonTracking = () => {
 
     setIsLoading(true);
     setError(null);
-    setCurrentZipTotal(null); // Reset current ZIP total
-    setTerminalStatus([]); // Clear previous status
+    setCurrentZipTotal(null);
+    setTerminalStatus([]);
 
     try {
       addTerminalStatus("Starting file processing...");
@@ -83,7 +123,6 @@ const CarbonTracking = () => {
 
       setAnalyzedFiles(data.analyzedFiles);
 
-      // Process each file from the ZIP and calculate current ZIP total
       addTerminalStatus(`Found ${data.processedFiles.length} documents in ZIP`);
       const zipTotal = data.processedFiles.reduce(
         (sum: number, file: APIProcessedFile) => sum + file.footprint,
@@ -102,10 +141,8 @@ const CarbonTracking = () => {
         };
       });
 
-      // Update total documents count
       setTotalDocuments((prev) => prev + data.analyzedFiles);
 
-      // Calculate cumulative deposits (each row shows total carbon from this document onwards)
       addTerminalStatus("Updating document history...");
       const allDocuments = [...newDocuments, ...documents];
       const finalDocuments = allDocuments.map(
@@ -157,9 +194,23 @@ const CarbonTracking = () => {
               placeholder="-- input company name --"
               className="scale-[80%] border border-gray-600 text-white p-2 rounded w-50 text-center bg-transparent hover:border-white transition-colors duration-300"
             />
-            <div className="scale-[80%] w-4 h-4 rounded-lg bg-red-500 beeping"></div>
-            <button className="scale-[80%] bg-transparent border-2 border-white text-white py-2 px-4 rounded-xl text-xs button-hover hover:bg-white hover:text-black transition-colors duration-300">
-              Connect Wallet
+            <div
+              className={`scale-[80%] w-4 h-4 rounded-lg ${
+                wallet.isConnected ? "bg-green-500" : "bg-red-500"
+              } beeping`}
+            ></div>
+            <button
+              onClick={handleConnectWallet}
+              className={`scale-[80%] bg-transparent border-2 border-white text-white py-2 px-4 rounded-xl text-xs button-hover hover:bg-white hover:text-black transition-colors duration-300 ${
+                wallet.isConnected ? "bg-white/10" : ""
+              }`}
+            >
+              {wallet.isConnected
+                ? `Connected: ${wallet.account?.slice(
+                    0,
+                    6
+                  )}...${wallet.account?.slice(-4)}`
+                : "Connect Wallet"}
             </button>
             <div className="absolute right-44 flex items-center justify-center">
               <button className="button-hover p-2 rounded-lg hover:bg-gray-800/50 transition-all duration-300">
