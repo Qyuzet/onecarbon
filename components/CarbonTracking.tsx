@@ -63,24 +63,24 @@ const CarbonTracking = () => {
       >
         <div className="flex flex-col items-center p-6">
           {/* Connector */}
-          <div className="flex justify-start w-full max-w-4xl mt-4">
+          <div className="flex justify-start w-full max-w-4xl mt-4 items-center gap-4">
             <input
               type="text"
               placeholder="-- input company name --"
-              className="scale-[80%] border border-gray-600 text-white p-2 rounded w-50 text-center bg-transparent"
+              className="scale-[80%] border border-gray-600 text-white p-2 rounded w-50 text-center bg-transparent hover:border-white transition-colors duration-300"
             />
-            <div className="scale-[80%] px-4 py-4 bg-red-500"></div>
-            <button className="scale-[80%] bg-transparent border-2 border-white text-white py-2 px-2 rounded-xl text-xs">
+            <div className="scale-[80%] w-4 h-4 rounded-lg bg-red-500 beeping"></div>
+            <button className="scale-[80%] bg-transparent border-2 border-white text-white py-2 px-4 rounded-xl text-xs button-hover hover:bg-white hover:text-black transition-colors duration-300">
               Connect Wallet
             </button>
             <div className="absolute right-44 flex items-center justify-center">
-              <button>
-                {" "}
+              <button className="button-hover p-2 rounded-lg hover:bg-gray-800/50 transition-all duration-300">
                 <Image
                   src="/download-icon.png"
-                  alt="donwload icon"
+                  alt="download icon"
                   width={32}
                   height={32}
+                  className="transition-transform hover:scale-110 duration-300"
                 />
               </button>
             </div>
@@ -146,7 +146,7 @@ const CarbonTracking = () => {
         </div>
 
         {/* File Upload & Processing Section */}
-        <div className="mt-8 flex flex-col items-start justify-start space-y-4 pl-6">
+        <div className="mt-16 flex flex-col items-center justify-center space-y-4 pl-6 w-full ">
           <div className="flex space-x-4">
             <div className="flex flex-col gap-4 items-start justify-center">
               <input
@@ -155,7 +155,7 @@ const CarbonTracking = () => {
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="border border-gray-600 p-2 rounded"
               />
-              <div className="flex flex-col items-center justify-center w-full text-center min-h-20 border-2 border-white p-4">
+              <div className="flex h-full flex-col items-center justify-center w-full text-center min-h-20 border-2 border-white p-4">
                 <span className="text-white">
                   {isLoading ? (
                     <div>
@@ -211,8 +211,30 @@ const CarbonTracking = () => {
                 {isLoading ? "Processing..." : "Process"}
               </button>
             </div>
-            <div className="flex items-center justify-center w-96 h-12 border-2 border-white rounded-lg">
-              <span className="overflow-x-auto whitespace-nowrap text-gray-400 block">{`http://localhost/carbontracking/`}</span>
+            <div className="flex flex-col w-full gap-4 items-start justify-start">
+              <div className="flex flex-col gap-2 items-start justify-center">
+                <span className="h-full">endpoint: </span>
+                <div className="flex items-center justify-center w-96 h-12 border-2 border-white rounded-lg">
+                  <span className="w-full overflow-x-auto whitespace-nowrap text-gray-400 block">{`http://localhost/carbontracking/`}</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 items-start justify-center">
+                <span className="h-full">agentic agent: </span>
+                <div className="flex items-center justify-center gap-2 w-96 h-12 ">
+                  <button className="w-full px-4 py-2 border-2 border-white rounded-lg button-hover hover:bg-white hover:text-black transition-colors duration-300 capitalize">
+                    Set Agents
+                  </button>
+                  <button className="w-full px-4 py-2 border-2 border-white rounded-lg button-hover hover:bg-white hover:text-black transition-colors duration-300 capitalize">
+                    Connect Agents
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 items-start justify-center">
+                <span className="h-full">terminal: </span>
+                <div className="flex border-2 border-white rounded-lg h-full items-center justify-center gap-2 w-96 h-12 ">
+                  <span>...</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
