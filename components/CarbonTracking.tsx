@@ -56,28 +56,47 @@ const CarbonTracking = () => {
           name: file.name,
           footprint: file.footprint,
           category: "",
-          deposit: 0, // Temporary deposit value
+          deposit: 0,
           address: "",
         })
       );
 
-      // Calculate cumulative deposit
-      const cumulativeDeposit = newDocuments.reduce(
-        (acc: number, doc: ProcessedDocument) => acc + doc.footprint,
-        0
+      // Calculate cumulative deposits from bottom to top
+      const updatedDocuments = newDocuments.map(
+        (doc: APIProcessedFile, index: number) => {
+          const deposit = newDocuments
+            .slice(index)
+            .reduce(
+              (sum: number, currentDoc: ProcessedDocument) =>
+                sum + currentDoc.footprint,
+              0
+            );
+          return {
+            ...doc,
+            deposit,
+          };
+        }
       );
-
-      // Update documents with cumulative deposit
-      const updatedDocuments = newDocuments.map((doc) => ({
-        ...doc,
-        deposit: cumulativeDeposit,
-      }));
 
       // Update total documents count
       setTotalDocuments((prev) => prev + data.analyzedFiles);
 
-      // Add new documents to the beginning of the array
-      setDocuments([...updatedDocuments, ...documents]);
+      // Add new documents to the beginning of the array and recalculate all deposits
+      const allDocuments = [...updatedDocuments, ...documents];
+      const finalDocuments = allDocuments.map(
+        (doc: ProcessedDocument, index: number) => ({
+          ...doc,
+          deposit: allDocuments
+            .slice(index)
+            .reduce(
+              (sum: number, currentDoc: ProcessedDocument) =>
+                sum + currentDoc.footprint,
+              0
+            ),
+        })
+      );
+
+      setDocuments(finalDocuments);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
       setResult(null);
@@ -163,7 +182,7 @@ const CarbonTracking = () => {
                   </thead>
                   <tbody>
                     {documents.length > 0 ? (
-                      documents.map((doc, index) => (
+                      documents.map((doc: ProcessedDocument, index: number) => (
                         <tr key={index} className="border-t border-gray-700">
                           <td className="py-3 px-4">{doc.name}</td>
                           <td className="py-3 px-4">
@@ -197,11 +216,9 @@ const CarbonTracking = () => {
           <div className="w-1/3">
             <div className="flex flex-col items-center justify-center w-full mt-10">
               <span className="text-3xl text-center font-montserrat font-bold mb-4">
-                {" "}
                 {totalDocuments || "---"}
               </span>
               <span className="text-3xl text-center font-montserrat font-semibold">
-                {" "}
                 Analyzed
                 <br /> Documents
               </span>
