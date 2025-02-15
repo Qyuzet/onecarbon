@@ -1,7 +1,7 @@
 {
-  "runtime": "edge",
   "functions": {
     "api/upload": {
+      "runtime": "nodejs18.x",
       "maxDuration": 30
     }
   }
