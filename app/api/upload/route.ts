@@ -4,13 +4,14 @@ import extract from "extract-zip";
 import OpenAI from "openai";
 import { writeFile } from "fs/promises";
 import { join } from "path";
+import pdf from "pdf-parse";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Function to recursively get all files
+// Function to recursively get all files in a directory
 function getAllFiles(dir: string): string[] {
   const files: string[] = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -27,6 +28,7 @@ function getAllFiles(dir: string): string[] {
   return files;
 }
 
+// Function to analyze text with GPT
 async function analyzePDFWithGPT(text: string): Promise<number> {
   try {
     const completion = await openai.chat.completions.create({
@@ -54,32 +56,32 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
     const match = result.match(/\d+(\.\d+)?/);
     console.log(`extracted value: ${match}`); // Debug log
     return match ? parseFloat(match[0]) : 0;
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Error analyzing with GPT:", error);
     return 0;
   }
 }
 
+// Function to read PDF content
 async function readPDFContent(filePath: string): Promise<string> {
   try {
-    // Verify file exists before attempting to read
     if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`);
+      console.error(`🚨 File not found: ${filePath}`);
       return "";
     }
 
-    const pdfParse = (await import("pdf-parse")).default;
+    // Manually set PDF worker path to avoid issues
+    process.env.PDFJS_WORKER = join(
+      process.cwd(),
+      "node_modules/pdfjs-dist/build/pdf.worker.js"
+    );
+
+    // Read file as a buffer and parse the PDF
     const buffer = await fs.promises.readFile(filePath);
-
-    try {
-      const pdfData = await pdfParse(buffer);
-      return pdfData.text;
-    } catch (pdfError: unknown) {
-      console.error(`Error parsing PDF ${filePath}:`, pdfError);
-      return "";
-    }
-  } catch (error: unknown) {
-    console.error(`Error reading PDF file ${filePath}:`, error);
+    const pdfData = await pdf(buffer);
+    return pdfData.text;
+  } catch (error) {
+    console.error(`❌ Error reading PDF file ${filePath}:`, error);
     return "";
   }
 }
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // ✅ Handle temp directories correctly for both local and Vercel
+    // ✅ Use `/tmp/` for storage in Vercel, `uploads/` for local
     const uploadDir =
       process.env.NODE_ENV === "production"
         ? "/tmp/uploads"
@@ -142,14 +144,14 @@ export async function POST(req: NextRequest) {
 
       // Process files recursively
       const allFiles = getAllFiles(extractDir);
-      console.log("Found files:", allFiles); // Debug log
+      console.log("📂 Found files:", allFiles); // Debug log
 
       const files = allFiles.filter((file) => {
         const lowerFile = file.toLowerCase();
         return lowerFile.endsWith(".pdf") || lowerFile.endsWith(".txt");
       });
 
-      console.log("Filtered files to process:", files); // Debug log
+      console.log("📄 Filtered files to process:", files); // Debug log
 
       if (files.length === 0) {
         return NextResponse.json(
@@ -176,8 +178,8 @@ export async function POST(req: NextRequest) {
         totalCarbonFootprint,
         analyzedFiles: files.length,
       });
-    } catch (error: unknown) {
-      console.error("Error processing ZIP:", error);
+    } catch (error) {
+      console.error("❌ Error processing ZIP:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       return NextResponse.json(
@@ -188,8 +190,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-  } catch (error: unknown) {
-    console.error("Error processing files:", error);
+  } catch (error) {
+    console.error("❌ Error processing files:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
