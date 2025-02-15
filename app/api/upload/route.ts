@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir, readFile } from "fs/promises";
-import * as fs from "fs";
-import extract from "extract-zip";
 import OpenAI from "openai";
-import { join } from "path";
-import os from "os";
 import JSZip from "jszip";
+import { createCanvas } from "canvas";
+import pdf from "pdf-parse/lib/pdf-parse.js";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -52,12 +49,16 @@ async function analyzePDFWithGPT(text: string): Promise<number> {
   }
 }
 
-// Read and extract text from PDFs
+// Read and extract text from PDFs using pdf-parse with canvas
 async function readPDFContent(buffer: Buffer): Promise<string> {
   try {
-    const pdfParse = (await import("pdf-parse")).default;
-    const pdfData = await pdfParse(buffer);
-    return pdfData.text;
+    // Create a mock canvas for pdf-parse
+    global.document = {
+      createElementNS: () => createCanvas(1, 1),
+    } as any;
+
+    const data = await pdf(buffer);
+    return data.text || "";
   } catch (pdfError: unknown) {
     console.error("Error parsing PDF:", pdfError);
     return "";
@@ -105,8 +106,9 @@ export async function POST(req: NextRequest) {
     // Filter for PDF and TXT files
     const files = Object.keys(contents.files).filter(
       (filename) =>
-        filename.toLowerCase().endsWith(".pdf") ||
-        filename.toLowerCase().endsWith(".txt")
+        !contents.files[filename].dir &&
+        (filename.toLowerCase().endsWith(".pdf") ||
+          filename.toLowerCase().endsWith(".txt"))
     );
 
     console.log("Filtered files:", files);
@@ -125,9 +127,6 @@ export async function POST(req: NextRequest) {
     for (const filename of files) {
       console.log(`Processing file: ${filename}`);
       try {
-        // Skip directories
-        if (contents.files[filename].dir) continue;
-
         // Get file content as array buffer
         const fileData = await contents.files[filename].async("nodebuffer");
 
@@ -152,6 +151,7 @@ export async function POST(req: NextRequest) {
           processedFiles.push({
             name: filename,
             size: fileData.length,
+            contentLength: fileContent.length,
             footprint: carbonFootprint,
           });
           console.log(`Analyzed ${filename}: ${carbonFootprint} kg CO2`);
