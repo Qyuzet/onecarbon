@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useState } from "react";
 import Image from "next/image";
 
@@ -19,18 +19,41 @@ interface APIProcessedFile {
 }
 
 const CarbonTracking = () => {
+  // State declarations
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<number | null>(null);
+  const [currentZipTotal, setCurrentZipTotal] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyzedFiles, setAnalyzedFiles] = useState(0);
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [terminalStatus, setTerminalStatus] = useState<string[]>([]);
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  // Calculate total carbon footprint from all documents
+  useEffect(() => {
+    if (documents.length > 0) {
+      const total = documents.reduce(
+        (sum: number, doc: ProcessedDocument) => sum + doc.footprint,
+        0
+      );
+      setResult(total);
+    } else {
+      setResult(null);
+    }
+  }, [documents]);
 
   const addTerminalStatus = (status: string) => {
     setTerminalStatus((prev) => [...prev, status]);
   };
+
+  // Auto-scroll terminal when new messages are added
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [terminalStatus]);
 
   const handleUpload = async () => {
     if (!file) return alert("Please select a ZIP file first!");
@@ -38,6 +61,7 @@ const CarbonTracking = () => {
 
     setIsLoading(true);
     setError(null);
+    setCurrentZipTotal(null); // Reset current ZIP total
     setTerminalStatus([]); // Clear previous status
 
     try {
@@ -57,11 +81,16 @@ const CarbonTracking = () => {
 
       if (!res.ok) throw new Error(data.error || "Upload failed");
 
-      setResult(data.totalCarbonFootprint);
       setAnalyzedFiles(data.analyzedFiles);
 
-      // Process each file from the ZIP
+      // Process each file from the ZIP and calculate current ZIP total
       addTerminalStatus(`Found ${data.processedFiles.length} documents in ZIP`);
+      const zipTotal = data.processedFiles.reduce(
+        (sum: number, file: APIProcessedFile) => sum + file.footprint,
+        0
+      );
+      setCurrentZipTotal(zipTotal);
+
       const newDocuments = data.processedFiles.map((file: APIProcessedFile) => {
         addTerminalStatus(`Processing document: ${file.name}`);
         return {
@@ -73,40 +102,18 @@ const CarbonTracking = () => {
         };
       });
 
-      // Calculate cumulative deposits from bottom to top
-      addTerminalStatus("Calculating carbon deposits...");
-      const updatedDocuments = newDocuments.map(
-        (doc: APIProcessedFile, index: number) => {
-          const deposit = newDocuments
-            .slice(index)
-            .reduce(
-              (sum: number, currentDoc: ProcessedDocument) =>
-                sum + currentDoc.footprint,
-              0
-            );
-          return {
-            ...doc,
-            deposit,
-          };
-        }
-      );
-
       // Update total documents count
       setTotalDocuments((prev) => prev + data.analyzedFiles);
 
-      // Add new documents to the beginning of the array and recalculate all deposits
+      // Calculate cumulative deposits (each row shows total carbon from this document onwards)
       addTerminalStatus("Updating document history...");
-      const allDocuments = [...updatedDocuments, ...documents];
+      const allDocuments = [...newDocuments, ...documents];
       const finalDocuments = allDocuments.map(
         (doc: ProcessedDocument, index: number) => ({
           ...doc,
           deposit: allDocuments
             .slice(index)
-            .reduce(
-              (sum: number, currentDoc: ProcessedDocument) =>
-                sum + currentDoc.footprint,
-              0
-            ),
+            .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
         })
       );
 
@@ -178,9 +185,9 @@ const CarbonTracking = () => {
 
           {/* Stats Section */}
           <div className="flex justify-center space-x-12 text-xl mt-6 mb-44">
-            <p>- kg CO₂/month</p>
-            <p>- kg CO₂/year</p>
-            <p>- Trees as equal</p>
+            <p>{result ? (result / 12).toFixed(2) : "-"} kg CO₂/month</p>
+            <p>{result ? (result * 1).toFixed(2) : "-"} kg CO₂/year</p>
+            <p>{result ? Math.ceil(result / 21.77) : "-"} Trees as equal</p>
           </div>
         </div>
 
@@ -292,10 +299,11 @@ const CarbonTracking = () => {
                         </ul>
                       </div>
                     </div>
-                  ) : result !== null ? (
-                    <div className="space-y-2">
-                      <div className="text-lg">
-                        Total Carbon Footprint: {result.toFixed(2)} kg CO₂
+                  ) : currentZipTotal !== null ? (
+                    <div className="space-y-2 w-full">
+                      <div className="text-lg whitespace-nowrap">
+                        Total Carbon Footprint: {currentZipTotal.toFixed(2)} kg
+                        CO₂
                       </div>
                       <div className="text-sm">
                         Successfully analyzed {analyzedFiles}{" "}
@@ -349,7 +357,10 @@ const CarbonTracking = () => {
                 <span className="text-gray-400">terminal:</span>
                 <div className="flex flex-col border-2 border-white/20 rounded-lg w-96 h-32 bg-white/5 overflow-hidden">
                   {terminalStatus.length > 0 ? (
-                    <div className="p-4 overflow-y-auto font-mono text-sm h-full">
+                    <div
+                      ref={terminalRef}
+                      className="p-4 overflow-y-auto font-mono text-sm h-full"
+                    >
                       {terminalStatus.map((status, index) => (
                         <div key={index} className="text-gray-300">
                           <span className="text-green-500">$</span> {status}
