@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { connectMetaMask, checkMetaMaskConnection } from "@/utils/metamask";
 import { ethers } from "ethers";
-// Import the contract ABI directly
+// Import the contract ABI directly.
 const contractArtifact = {
   abi: [
     {
