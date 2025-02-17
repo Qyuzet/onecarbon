@@ -1,0 +1,34 @@
+Hi! I'm developing OneCarbon, an AI-powered Scope 3 carbon reporting platform, and looking to transform it into a DeFi agent system for the hackathon. 
+
+Project Overview:
+- Currently: AI-powered document analysis for carbon footprint tracking with blockchain integration
+- Vision: Transform into an automated DeFi agent system for carbon credit trading and optimization
+
+Looking for teammates with these skills:
+1. NEAR Protocol Development
+   - Smart contract development on NEAR
+   - Experience with NEAR SDK
+   - Understanding of NEAR wallet integration
+
+2. AI/ML Development
+   - Experience with AI agents and autonomous systems
+   - Knowledge of market-making algorithms
+   - Background in DeFi automation
+
+3. Frontend Development
+   - Experience with Next.js/React
+   - Web3 integration expertise
+   - Data visualization skills
+
+Current Tech Stack:
+- Frontend: Next.js 13+, TypeScript, Tailwind
+- AI: Document analysis, RAG (planned)
+- Blockchain: Currently on Ethereum (planning to migrate to NEAR)
+
+The project already has a working foundation with AI document analysis and blockchain integration. Looking to pivot towards the DeFi Agents track by implementing automated carbon credit trading, yield optimization, and portfolio management.
+
+If you're passionate about combining DeFi, AI, and sustainability, let's build something impactful together!
+
+Discord: @qyuzet.
+Telegram: @uqyuu
+GitHub: @Qyuzet
