@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { connectMetaMask, checkMetaMaskConnection } from "@/utils/metamask";
 import { ethers } from "ethers";
-// Import the contract ABI directly.
+
 const contractArtifact = {
   abi: [
     {
@@ -22,9 +22,11 @@ const contractArtifact = {
       type: "function",
     },
     {
-      inputs: [{ internalType: "uint256", name: "amount", type: "uint256" }],
+      inputs: [
+        { internalType: "uint256[]", name: "amounts", type: "uint256[]" },
+      ],
       name: "depositCarbon",
-      outputs: [],
+      outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
       stateMutability: "nonpayable",
       type: "function",
     },
@@ -43,6 +45,13 @@ const contractArtifact = {
       ],
       name: "getCompanyName",
       outputs: [{ internalType: "string", name: "", type: "string" }],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "getEntries",
+      outputs: [{ internalType: "CarbonEntry[]", name: "", type: "tuple[]" }],
       stateMutability: "view",
       type: "function",
     },
@@ -68,6 +77,7 @@ interface ProcessedDocument {
   category?: string;
   deposit: number;
   address?: string;
+  transactionHash?: string;
 }
 
 interface APIProcessedFile {
@@ -78,7 +88,6 @@ interface APIProcessedFile {
 }
 
 const CarbonTrackingComponent = () => {
-  // Wallet and company state
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
     account: null,
@@ -89,7 +98,6 @@ const CarbonTrackingComponent = () => {
     isRegistering: false,
   });
 
-  // State declarations
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<number | null>(null);
   const [currentZipTotal, setCurrentZipTotal] = useState<number | null>(null);
@@ -105,7 +113,6 @@ const CarbonTrackingComponent = () => {
     setTerminalStatus((prev) => [...prev, status]);
   };
 
-  // Check wallet connection and company registration on mount
   useEffect(() => {
     const checkWalletAndCompany = async () => {
       const connection = await checkMetaMaskConnection();
@@ -134,6 +141,21 @@ const CarbonTrackingComponent = () => {
               isRegistered: true,
             }));
             addTerminalStatus(`Company registered: ${companyName}`);
+
+            const entries = await contract.getEntries();
+            const userEntries = entries.filter(
+              (entry) => entry.user === connection.account
+            );
+            setDocuments(
+              userEntries.map((entry) => ({
+                name: entry.companyName,
+                footprint: entry.amount,
+                category: "",
+                deposit: 0,
+                address: entry.user,
+                transactionHash: entry.transactionHash,
+              }))
+            );
           }
         } catch (error) {
           console.error("Error checking company registration:", error);
@@ -143,7 +165,6 @@ const CarbonTrackingComponent = () => {
     checkWalletAndCompany();
   }, []);
 
-  // Handle wallet connection
   const handleConnectWallet = async () => {
     try {
       addTerminalStatus("Connecting to MetaMask...");
@@ -159,7 +180,6 @@ const CarbonTrackingComponent = () => {
     }
   };
 
-  // Handle company registration
   const handleRegisterCompany = async () => {
     if (!company.name.trim()) {
       addTerminalStatus("Error: Company name cannot be empty");
@@ -197,7 +217,6 @@ const CarbonTrackingComponent = () => {
     }
   };
 
-  // Calculate total carbon footprint from all documents
   useEffect(() => {
     if (documents.length > 0) {
       const total = documents.reduce(
@@ -210,7 +229,6 @@ const CarbonTrackingComponent = () => {
     }
   }, [documents]);
 
-  // Handle file upload
   const handleUpload = async () => {
     if (!file) return alert("Please select a ZIP file first!");
     if (!file.name.endsWith(".zip")) return alert("Please select a ZIP file!");
@@ -248,47 +266,77 @@ const CarbonTrackingComponent = () => {
       );
       setCurrentZipTotal(zipTotal);
 
-      const newDocuments = data.processedFiles.map((file: APIProcessedFile) => {
-        addTerminalStatus(`Processing document: ${file.name}`);
-        return {
+      const newDocuments = data.processedFiles.map(
+        (file: APIProcessedFile) => ({
           name: file.name,
           footprint: file.footprint,
           category: "",
           deposit: 0,
           address: wallet.account || "",
-        };
-      });
-
-      setTotalDocuments((prev) => prev + data.analyzedFiles);
-
-      addTerminalStatus("Updating document history...");
-      const allDocuments = [...newDocuments, ...documents];
-      const finalDocuments = allDocuments.map(
-        (doc: ProcessedDocument, index: number) => ({
-          ...doc,
-          deposit: allDocuments
-            .slice(index)
-            .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
         })
       );
 
-      // Store carbon data on blockchain
-      if (wallet.isConnected && company.isRegistered && window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(
-          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
-          contractArtifact.abi,
-          signer
-        );
+      setTotalDocuments((prev) => prev + data.analyzedFiles);
 
-        addTerminalStatus("Storing carbon data on blockchain...");
-        const tx = await contract.depositCarbon(zipTotal);
-        await tx.wait();
-        addTerminalStatus("Carbon data stored successfully!");
+      if (wallet.isConnected && company.isRegistered && window.ethereum) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(
+            process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
+            contractArtifact.abi,
+            signer
+          );
+
+          addTerminalStatus("Storing carbon data on blockchain...");
+
+          // Convert zipTotal to an array with a single element
+          const amountsArray = [Math.floor(zipTotal)];
+
+          // Call the contract with the array
+          const tx = await contract.depositCarbon(amountsArray);
+
+          // Wait for transaction confirmation
+          const receipt = await tx.wait();
+          const txHash = receipt.transactionHash;
+          addTerminalStatus("Carbon data stored successfully!");
+
+          // Update all new documents with the transaction hash
+          const documentsWithHash = newDocuments.map((doc) => ({
+            ...doc,
+            transactionHash: txHash,
+          }));
+
+          // Combine with existing documents and update deposits
+          const allDocuments = [...documentsWithHash, ...documents];
+          const finalDocuments = allDocuments.map(
+            (doc: ProcessedDocument, index: number) => ({
+              ...doc,
+              deposit: allDocuments
+                .slice(index)
+                .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
+            })
+          );
+
+          setDocuments(finalDocuments);
+        } catch (error) {
+          console.error("Transaction failed:", error);
+          addTerminalStatus("Failed to store carbon data.");
+
+          if (error.code === "UNPREDICTABLE_GAS_LIMIT") {
+            addTerminalStatus(
+              "Contract execution failed. Please check your input values and company registration status."
+            );
+          } else if (error.code === "INSUFFICIENT_FUNDS") {
+            addTerminalStatus(
+              "Insufficient funds to complete the transaction."
+            );
+          } else {
+            addTerminalStatus(`Error: ${error.message}`);
+          }
+        }
       }
 
-      setDocuments(finalDocuments);
       addTerminalStatus("Processing completed successfully!");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Upload failed";
@@ -402,7 +450,7 @@ const CarbonTrackingComponent = () => {
                       <th className="py-3 px-4">Carbon (kg)</th>
                       <th className="py-3 px-4">Category</th>
                       <th className="py-3 px-4">Deposit (kg)</th>
-                      <th className="py-3 px-4">Address</th>
+                      <th className="py-3 px-4">TX</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -419,7 +467,18 @@ const CarbonTrackingComponent = () => {
                           <td className="py-3 px-4">
                             {doc.deposit.toFixed(2)}
                           </td>
-                          <td className="py-3 px-4">{doc.address || "----"}</td>
+                          <td className="py-3 px-4">
+                            {doc.transactionHash ? (
+                              <span className="text-xs break-all">
+                                {`${doc.transactionHash.slice(
+                                  0,
+                                  6
+                                )}...${doc.transactionHash.slice(-4)}`}
+                              </span>
+                            ) : (
+                              "----"
+                            )}
+                          </td>
                         </tr>
                       ))
                     ) : (

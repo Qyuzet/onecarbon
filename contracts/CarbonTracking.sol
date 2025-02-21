@@ -46,23 +46,26 @@ contract CarbonTracking {
         emit CompanyRegistered(msg.sender, companyName);
     }
 
-    function depositCarbon(uint256 amount) public onlyRegisteredCompany {
-        string memory companyName = companies[msg.sender].name;
-        
+function depositCarbon(uint256[] memory amounts) public onlyRegisteredCompany returns (bytes32) {
+    string memory companyName = companies[msg.sender].name;
+    
+    for (uint256 i = 0; i < amounts.length; i++) {
         entries.push(CarbonEntry({
             id: nextId,
             user: msg.sender,
-            amount: amount,
+            amount: amounts[i],
             timestamp: block.timestamp,
             companyName: companyName
         }));
         
-        companies[msg.sender].totalCarbon += amount;
+        companies[msg.sender].totalCarbon += amounts[i];
         nextId++;
-
-        emit CarbonDeposited(msg.sender, amount, block.timestamp, companyName);
     }
 
+    emit CarbonDeposited(msg.sender, amounts.length, block.timestamp, companyName);
+    return keccak256(abi.encodePacked(msg.sender, amounts, block.timestamp)); // Return transaction hash
+}
+    
     function getCompanyDetails(address companyAddress) public view returns (Company memory) {
         return companies[companyAddress];
     }
