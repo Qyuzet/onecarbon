@@ -3,7 +3,7 @@
 OneCarbon is the world's first automated Scope 3 carbon reporting platform that leverages AI for document analysis and blockchain technology for secure, privacy-preserving data storage.
 ![oneCarbon-1](https://github.com/user-attachments/assets/e60d62b0-1d4c-4759-9a13-a45207f791d2)
 
-## 🌟 Features
+## Features
 
 - **AI-Powered Document Analysis**
 
@@ -25,7 +25,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
   - Progress tracking and analytics
   - Responsive design for all devices
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend**
 
@@ -46,7 +46,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
   - Manta Network Integration
   - Web3 Integration
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Node.js 16.x or later
 - npm or yarn
@@ -54,7 +54,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
 - Web3 wallet (MetaMask recommended)
 - Manta Network account
 
-## 🚀 Getting Started
+## Getting Started
 
 1. Clone the repository:
 
@@ -93,7 +93,7 @@ OneCarbon is the world's first automated Scope 3 carbon reporting platform that 
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 onecarbon/
@@ -108,7 +108,7 @@ onecarbon/
 └── lib/                  # Shared libraries
 ```
 
-## 🔒 Smart Contract
+## Smart Contract
 
 The CarbonTracking smart contract provides:
 
@@ -117,7 +117,7 @@ The CarbonTracking smart contract provides:
 - Historical data access
 - Event emission for tracking
 
-## 📤 File Upload System
+## File Upload System
 
 Supports:
 
@@ -126,14 +126,14 @@ Supports:
 - Text file analysis
 - Bulk document handling
 
-## 🛡️ Privacy Features
+## Privacy Features
 
 - Manta Network integration for private transactions
 - Secure document processing
 - Protected business data
 - Verifiable calculations
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -141,11 +141,11 @@ Supports:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - OpenAI API
 - Manta Network for privacy features
