@@ -4,6 +4,22 @@ import { useState } from "react";
 import Image from "next/image";
 import { connectMetaMask, checkMetaMaskConnection } from "@/utils/metamask";
 import { ethers } from "ethers";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const contractArtifact = {
   abi: [
@@ -51,7 +67,25 @@ const contractArtifact = {
     {
       inputs: [],
       name: "getEntries",
-      outputs: [{ internalType: "CarbonEntry[]", name: "", type: "tuple[]" }],
+      outputs: [
+        {
+          components: [
+            { internalType: "uint256", name: "id", type: "uint256" },
+            { internalType: "address", name: "user", type: "address" },
+            { internalType: "uint256", name: "amount", type: "uint256" },
+            { internalType: "uint256", name: "timestamp", type: "uint256" },
+            { internalType: "string", name: "companyName", type: "string" },
+            {
+              internalType: "bytes32",
+              name: "transactionHash",
+              type: "bytes32",
+            },
+          ],
+          internalType: "struct CarbonTracking.CarbonEntry[]",
+          name: "",
+          type: "tuple[]",
+        },
+      ],
       stateMutability: "view",
       type: "function",
     },
@@ -72,9 +106,9 @@ interface CompanyState {
 }
 
 interface ProcessedDocument {
-  name: string;
+  name: string; // Will store the PDF file name
   footprint: number;
-  category?: string;
+  category: string; // Will be "PDF" for documents
   deposit: number;
   address?: string;
   transactionHash?: string;
@@ -108,16 +142,24 @@ const CarbonTrackingComponent = () => {
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [terminalStatus, setTerminalStatus] = useState<string[]>([]);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const [totalCarbonFootprint, setTotalCarbonFootprint] = useState(0);
+  const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-  const addTerminalStatus = (status: string) => {
-    setTerminalStatus((prev) => [...prev, status]);
+  const handleCopy = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(hash);
+    toast.success("Copied to clipboard!");
   };
 
-  useEffect(() => {
-    const checkWalletAndCompany = async () => {
-      const connection = await checkMetaMaskConnection();
-      setWallet((prev) => ({ ...prev, ...connection }));
+  const handleConnectWallet = async () => {
+    try {
+      addTerminalStatus("Connecting to MetaMask...");
+      const connection = await connectMetaMask();
+      setWallet(connection);
+      addTerminalStatus(`Connected to account: ${connection.account}`);
+      addTerminalStatus(`Network: ${connection.network.name}`);
 
+      // Check company registration after connection
       if (connection.isConnected && connection.account && window.ethereum) {
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -131,6 +173,7 @@ const CarbonTrackingComponent = () => {
           const isCompanyRegistered = await contract.isCompanyRegistered(
             connection.account
           );
+
           if (isCompanyRegistered) {
             const companyName = await contract.getCompanyName(
               connection.account
@@ -142,36 +185,37 @@ const CarbonTrackingComponent = () => {
             }));
             addTerminalStatus(`Company registered: ${companyName}`);
 
+            // Fetch and process entries
             const entries = await contract.getEntries();
             const userEntries = entries.filter(
-              (entry) => entry.user === connection.account
+              (entry) =>
+                entry.user.toLowerCase() === connection.account.toLowerCase()
             );
-            setDocuments(
-              userEntries.map((entry) => ({
-                name: entry.companyName,
-                footprint: entry.amount,
-                category: "",
-                deposit: 0,
-                address: entry.user,
-                transactionHash: entry.transactionHash,
-              }))
-            );
+
+            const processedEntries = userEntries.map((entry) => ({
+              name: entry.companyName,
+              footprint: Number(entry.amount),
+              category: "",
+              deposit: Number(entry.amount),
+              address: entry.user,
+              transactionHash: entry.transactionHash,
+            }));
+
+            // Calculate cumulative deposits
+            const entriesWithDeposits = processedEntries.map((doc, index) => ({
+              ...doc,
+              deposit: processedEntries
+                .slice(index)
+                .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
+            }));
+
+            setDocuments(entriesWithDeposits);
           }
         } catch (error) {
           console.error("Error checking company registration:", error);
+          addTerminalStatus(`Error: ${error.message}`);
         }
       }
-    };
-    checkWalletAndCompany();
-  }, []);
-
-  const handleConnectWallet = async () => {
-    try {
-      addTerminalStatus("Connecting to MetaMask...");
-      const connection = await connectMetaMask();
-      setWallet(connection);
-      addTerminalStatus(`Connected to account: ${connection.account}`);
-      addTerminalStatus(`Network: ${connection.network.name}`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Connection failed";
@@ -208,6 +252,9 @@ const CarbonTrackingComponent = () => {
 
       setCompany((prev) => ({ ...prev, isRegistered: true }));
       addTerminalStatus(`Company "${company.name}" successfully registered!`);
+
+      // After successful registration, initialize empty documents array
+      setDocuments([]);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Registration failed";
@@ -217,17 +264,77 @@ const CarbonTrackingComponent = () => {
     }
   };
 
+  const addTerminalStatus = (status: string) => {
+    setTerminalStatus((prev) => [...prev, status]);
+  };
+
   useEffect(() => {
-    if (documents.length > 0) {
-      const total = documents.reduce(
-        (sum: number, doc: ProcessedDocument) => sum + doc.footprint,
-        0
-      );
-      setResult(total);
-    } else {
-      setResult(null);
-    }
-  }, [documents]);
+    const checkWalletAndCompany = async () => {
+      const connection = await checkMetaMaskConnection();
+      setWallet((prev) => ({ ...prev, ...connection }));
+
+      if (connection.isConnected && connection.account && window.ethereum) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(
+            process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "",
+            contractArtifact.abi,
+            signer
+          );
+
+          const isCompanyRegistered = await contract.isCompanyRegistered(
+            connection.account
+          );
+
+          if (isCompanyRegistered) {
+            const companyName = await contract.getCompanyName(
+              connection.account
+            );
+            setCompany((prev) => ({
+              ...prev,
+              name: companyName,
+              isRegistered: true,
+            }));
+            addTerminalStatus(`Company registered: ${companyName}`);
+
+            // Fetch and process entries
+            const entries = await contract.getEntries();
+            const userEntries = entries.filter(
+              (entry) =>
+                entry.user.toLowerCase() === connection.account.toLowerCase()
+            );
+
+            const processedEntries = userEntries.map((entry) => ({
+              name: entry.companyName,
+              footprint: Number(entry.amount),
+              category: "",
+              deposit: Number(entry.amount),
+              address: entry.user,
+              transactionHash: entry.transactionHash,
+            }));
+
+            // Calculate cumulative deposits and update totals
+            const entriesWithDeposits = processedEntries.map((doc, index) => ({
+              ...doc,
+              deposit: processedEntries
+                .slice(0, index + 1)
+                .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
+            }));
+
+            setDocuments(entriesWithDeposits);
+            calculateTotals(processedEntries); // Calculate and update totals
+
+            setTotalDocuments(entriesWithDeposits.length);
+          }
+        } catch (error) {
+          console.error("Error checking company registration:", error);
+          addTerminalStatus(`Error: ${error.message}`);
+        }
+      }
+    };
+    checkWalletAndCompany();
+  }, []);
 
   const handleUpload = async () => {
     if (!file) return alert("Please select a ZIP file first!");
@@ -257,8 +364,6 @@ const CarbonTrackingComponent = () => {
 
       if (!res.ok) throw new Error(data.error || "Upload failed");
 
-      setAnalyzedFiles(data.analyzedFiles);
-
       addTerminalStatus(`Found ${data.processedFiles.length} documents in ZIP`);
       const zipTotal = data.processedFiles.reduce(
         (sum: number, file: APIProcessedFile) => sum + file.footprint,
@@ -266,18 +371,21 @@ const CarbonTrackingComponent = () => {
       );
       setCurrentZipTotal(zipTotal);
 
+      // Create new documents with actual file names
       const newDocuments = data.processedFiles.map(
         (file: APIProcessedFile) => ({
-          name: file.name,
+          name: file.name.split("/").pop() || file.name, // Get just the file name without path
           footprint: file.footprint,
-          category: "",
-          deposit: 0,
+          category: "PDF", // Since we know these are PDF files
+          deposit: file.footprint,
           address: wallet.account || "",
         })
       );
 
-      setTotalDocuments((prev) => prev + data.analyzedFiles);
+      // Update analyzed files count
+      setAnalyzedFiles((prev) => prev + data.processedFiles.length);
 
+      // Blockchain storage
       if (wallet.isConnected && company.isRegistered && window.ethereum) {
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -290,61 +398,52 @@ const CarbonTrackingComponent = () => {
 
           addTerminalStatus("Storing carbon data on blockchain...");
 
-          // Convert zipTotal to an array with a single element
-          const amountsArray = [Math.floor(zipTotal)];
-
-          // Call the contract with the array
-          const tx = await contract.depositCarbon(amountsArray);
-
-          // Wait for transaction confirmation
-          const receipt = await tx.wait();
-          const txHash = receipt.transactionHash;
-          addTerminalStatus("Carbon data stored successfully!");
-
-          // Update all new documents with the transaction hash
-          const documentsWithHash = newDocuments.map((doc) => ({
-            ...doc,
-            transactionHash: txHash,
-          }));
-
-          // Combine with existing documents and update deposits
-          const allDocuments = [...documentsWithHash, ...documents];
-          const finalDocuments = allDocuments.map(
-            (doc: ProcessedDocument, index: number) => ({
-              ...doc,
-              deposit: allDocuments
-                .slice(index)
-                .reduce((sum, currentDoc) => sum + currentDoc.footprint, 0),
-            })
+          // Store individual document footprints
+          const amountsArray = data.processedFiles.map(
+            (file: APIProcessedFile) => Math.floor(file.footprint)
           );
 
-          setDocuments(finalDocuments);
+          const tx = await contract.depositCarbon(amountsArray);
+          const receipt = await tx.wait();
+
+          addTerminalStatus("Carbon data stored successfully!");
+
+          // Update documents with transaction hash
+          const documentsWithHash = newDocuments.map((doc) => ({
+            ...doc,
+            transactionHash: receipt.transactionHash,
+          }));
+
+          // // Update documents state
+          // setDocuments((prevDocs) => [...documentsWithHash, ...prevDocs]);
+
+          // // Update total stored documents count
+          // setTotalDocuments((prev) => prev + data.processedFiles.length);
+
+          if (receipt) {
+            const updatedDocs = [...documentsWithHash, ...documents];
+            setTotalDocuments((prev) => prev + data.processedFiles.length);
+            setDocuments(updatedDocs);
+            calculateTotals(updatedDocs);
+          }
         } catch (error) {
           console.error("Transaction failed:", error);
           addTerminalStatus("Failed to store carbon data.");
-
-          if (error.code === "UNPREDICTABLE_GAS_LIMIT") {
-            addTerminalStatus(
-              "Contract execution failed. Please check your input values and company registration status."
-            );
-          } else if (error.code === "INSUFFICIENT_FUNDS") {
-            addTerminalStatus(
-              "Insufficient funds to complete the transaction."
-            );
-          } else {
-            addTerminalStatus(`Error: ${error.message}`);
-          }
+          // ... error handling ...
         }
       }
-
-      addTerminalStatus("Processing completed successfully!");
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Upload failed";
-      setError(errorMessage);
-      addTerminalStatus(`Error: ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
+      // ... error handling ...
     }
+  };
+
+  const calculateTotals = (entries) => {
+    const total = entries.reduce(
+      (sum, entry) => sum + Number(entry.footprint),
+      0
+    );
+    setTotalCarbonFootprint(total);
+    setResult(total); // This will update the main display
   };
 
   return (
@@ -440,71 +539,91 @@ const CarbonTrackingComponent = () => {
         {/* Content Section */}
         <div className="flex gap-4 px-6">
           {/* Left Panel */}
-          <div className="flex-grow">
-            <div className="w-full max-w-4xl mt-10">
-              <div className="overflow-hidden border border-gray-700 rounded-lg mt-4">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-700 text-gray-300 uppercase">
-                    <tr>
-                      <th className="py-3 px-4">Current Documents</th>
-                      <th className="py-3 px-4">Carbon (kg)</th>
-                      <th className="py-3 px-4">Category</th>
-                      <th className="py-3 px-4">Deposit (kg)</th>
-                      <th className="py-3 px-4">TX</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+          <TooltipProvider>
+            <div className="max-w-4xl mx-auto mt-10 border border-gray-700 rounded-lg overflow-hidden">
+              <div className="max-h-60 overflow-y-auto">
+                <Table className="w-full text-left text-sm">
+                  <TableHeader className="bg-gray-700 text-gray-300 uppercase">
+                    <TableRow>
+                      <TableHead className="py-3 px-4">Document</TableHead>
+                      <TableHead className="py-3 px-4">Carbon (kg)</TableHead>
+                      <TableHead className="py-3 px-4">Type</TableHead>
+                      <TableHead className="py-3 px-4">Deposit (kg)</TableHead>
+                      <TableHead className="py-3 px-4">TX</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {documents.length > 0 ? (
-                      documents.map((doc: ProcessedDocument, index: number) => (
-                        <tr key={index} className="border-t border-gray-700">
-                          <td className="py-3 px-4">{doc.name}</td>
-                          <td className="py-3 px-4">
+                      documents.slice(0, 5).map((doc, index) => (
+                        <TableRow
+                          key={index}
+                          className="border-t border-gray-700"
+                        >
+                          <TableCell className="py-3 px-4">
+                            {doc.name}
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             {doc.footprint.toFixed(2)}
-                          </td>
-                          <td className="py-3 px-4">
-                            {doc.category || "empty"}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
+                            {doc.category || "PDF"}
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             {doc.deposit.toFixed(2)}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             {doc.transactionHash ? (
-                              <span className="text-xs break-all">
-                                {`${doc.transactionHash.slice(
-                                  0,
-                                  6
-                                )}...${doc.transactionHash.slice(-4)}`}
-                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() =>
+                                      handleCopy(doc.transactionHash)
+                                    }
+                                    className="text-xs break-all bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition"
+                                  >
+                                    {`${doc.transactionHash.slice(
+                                      0,
+                                      6
+                                    )}...${doc.transactionHash.slice(-4)}`}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-gray-900 text-white text-xs p-2 rounded">
+                                  <span>{doc.transactionHash}</span>
+                                </TooltipContent>
+                              </Tooltip>
                             ) : (
                               "----"
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     ) : (
-                      <tr className="border-t border-gray-700">
-                        <td className="py-3 px-4">empty</td>
-                        <td className="py-3 px-4">-</td>
-                        <td className="py-3 px-4">empty</td>
-                        <td className="py-3 px-4">-</td>
-                        <td className="py-3 px-4">----</td>
-                      </tr>
+                      <TableRow className="border-t border-gray-700">
+                        <TableCell className="py-3 px-4">
+                          No documents
+                        </TableCell>
+                        <TableCell className="py-3 px-4">-</TableCell>
+                        <TableCell className="py-3 px-4">-</TableCell>
+                        <TableCell className="py-3 px-4">-</TableCell>
+                        <TableCell className="py-3 px-4">----</TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
-          </div>
+          </TooltipProvider>
 
           {/* Right Panel */}
+
           <div className="w-1/3">
             <div className="flex flex-col items-center justify-center w-full mt-10">
               <span className="text-3xl text-center font-montserrat font-bold mb-4">
-                {totalDocuments || "---"}
+                {totalDocuments || "0"}
               </span>
               <span className="text-3xl text-center font-montserrat font-semibold">
-                Analyzed
-                <br /> Documents
+                Documents
+                <br /> Stored
               </span>
             </div>
           </div>

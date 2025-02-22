@@ -8,6 +8,7 @@ contract CarbonTracking {
         uint256 amount;
         uint256 timestamp;
         string companyName;
+        bytes32 transactionHash;  // Added to store transaction hash
     }
 
     struct Company {
@@ -19,12 +20,10 @@ contract CarbonTracking {
     CarbonEntry[] public entries;
     uint256 public nextId;
     
-    // Mapping from address to company details
     mapping(address => Company) public companies;
-    // Array to keep track of all registered companies
     address[] public registeredCompanies;
 
-    event CarbonDeposited(address indexed user, uint256 amount, uint256 timestamp, string companyName);
+    event CarbonDeposited(address indexed user, uint256 amount, uint256 timestamp, string companyName, bytes32 transactionHash);
     event CompanyRegistered(address indexed user, string companyName);
 
     modifier onlyRegisteredCompany() {
@@ -46,25 +45,27 @@ contract CarbonTracking {
         emit CompanyRegistered(msg.sender, companyName);
     }
 
-function depositCarbon(uint256[] memory amounts) public onlyRegisteredCompany returns (bytes32) {
-    string memory companyName = companies[msg.sender].name;
-    
-    for (uint256 i = 0; i < amounts.length; i++) {
-        entries.push(CarbonEntry({
-            id: nextId,
-            user: msg.sender,
-            amount: amounts[i],
-            timestamp: block.timestamp,
-            companyName: companyName
-        }));
+    function depositCarbon(uint256[] memory amounts) public onlyRegisteredCompany returns (bytes32) {
+        string memory companyName = companies[msg.sender].name;
+        bytes32 txHash = keccak256(abi.encodePacked(msg.sender, amounts, block.timestamp));
         
-        companies[msg.sender].totalCarbon += amounts[i];
-        nextId++;
-    }
+        for (uint256 i = 0; i < amounts.length; i++) {
+            entries.push(CarbonEntry({
+                id: nextId,
+                user: msg.sender,
+                amount: amounts[i],
+                timestamp: block.timestamp,
+                companyName: companyName,
+                transactionHash: txHash
+            }));
+            
+            companies[msg.sender].totalCarbon += amounts[i];
+            nextId++;
+        }
 
-    emit CarbonDeposited(msg.sender, amounts.length, block.timestamp, companyName);
-    return keccak256(abi.encodePacked(msg.sender, amounts, block.timestamp)); // Return transaction hash
-}
+        emit CarbonDeposited(msg.sender, amounts.length, block.timestamp, companyName, txHash);
+        return txHash;
+    }
     
     function getCompanyDetails(address companyAddress) public view returns (Company memory) {
         return companies[companyAddress];
